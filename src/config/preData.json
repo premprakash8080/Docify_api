@@ -248,35 +248,35 @@
   ],
   "tasks": [
     {
-      "id": "990e8400-e29b-41d4-a716-446655440001",
+      "id": 1,
       "note_id": "770e8400-e29b-41d4-a716-446655440001",
       "label": "Review Q4 budget",
       "completed": false,
       "sort_order": 0
     },
     {
-      "id": "990e8400-e29b-41d4-a716-446655440002",
+      "id": 2,
       "note_id": "770e8400-e29b-41d4-a716-446655440001",
       "label": "Schedule team meeting",
       "completed": true,
       "sort_order": 1
     },
     {
-      "id": "990e8400-e29b-41d4-a716-446655440003",
+      "id": 3,
       "note_id": "770e8400-e29b-41d4-a716-446655440002",
       "label": "Follow up on action items",
       "completed": false,
       "sort_order": 0
     },
     {
-      "id": "990e8400-e29b-41d4-a716-446655440004",
+      "id": 4,
       "note_id": "770e8400-e29b-41d4-a716-446655440004",
       "label": "Practice async/await examples",
       "completed": false,
       "sort_order": 0
     },
     {
-      "id": "990e8400-e29b-41d4-a716-446655440005",
+      "id": 5,
       "note_id": "770e8400-e29b-41d4-a716-446655440004",
       "label": "Read MDN documentation",
       "completed": true,

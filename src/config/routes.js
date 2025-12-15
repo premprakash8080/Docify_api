@@ -9,6 +9,7 @@ exports.set_routes = (app) => {
   const stacks = require("../routes/stacksRoute");
   const tags = require("../routes/tagsRoute");
   const files = require("../routes/filesRoutes");
+  const tasks = require("../routes/tasksRoutes");
   const calendar = require("../routes/calendarRoutes");
 
   app.use("/api/users", users);
@@ -17,5 +18,6 @@ exports.set_routes = (app) => {
   app.use("/api/stacks", stacks);
   app.use("/api/tags", tags);
   app.use("/api/files", files);
+  app.use("/api/tasks", tasks);
   app.use("/api/calendar", calendar);
 };

@@ -9,9 +9,9 @@ const Task = database.define(
   TABLE_NAME_TASKS,
   {
     id: {
-      type: Sequelize.UUID,
+      type: Sequelize.INTEGER,
       primaryKey: true,
-      defaultValue: Sequelize.UUIDV4,
+      autoIncrement: true,
       allowNull: false,
     },
     note_id: {
@@ -57,7 +57,6 @@ const Task = database.define(
 
 // Relationships:
 // Task N - 1 Note
-
 module.exports = Task;
 
 
