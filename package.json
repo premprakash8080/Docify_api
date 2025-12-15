@@ -1,0 +1,54 @@
+{
+  "name": "foxy_homes_api",
+  "version": "1.0.0",
+  "description": "To make it easy for you to get started with GitLab, here's a list of recommended next steps.",
+  "main": "server.js",
+  "scripts": {
+    "start": "npm run nodemon",
+    "dev": "cross-env NODE_ENV=development node server.js",
+    "testing": "nodemon --exec cross-env NODE_ENV=testing node server.js",
+    "nodemon": "nodemon --exec npm run dev",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://gitlab.com/foxy-home-staging/foxy_homes_api.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://gitlab.com/foxy-home-staging/foxy_homes_api/issues"
+  },
+  "homepage": "https://gitlab.com/foxy-home-staging/foxy_homes_api#readme",
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.374.0",
+    "@aws-sdk/client-ses": "^3.624.0",
+    "bcryptjs": "^2.4.3",
+    "body-parser": "^1.20.2",
+    "cloudinary": "^1.41.3",
+    "cors": "^2.8.5",
+    "cross-env": "^7.0.3",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "firebase-admin": "^12.7.0",
+    "i": "^0.3.7",
+    "jsonwebtoken": "^9.0.1",
+    "messagemedia-messages-sdk": "^2.0.3",
+    "moment": "^2.29.4",
+    "mongoose": "^7.3.1",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",
+    "multer-s3": "^3.0.1",
+    "multer-storage-cloudinary": "^4.0.0",
+    "mysql": "^2.18.1",
+    "mysql2": "^3.4.3",
+    "node-cron": "^3.0.3",
+    "nodemailer": "^6.9.3",
+    "npm": "^9.8.0",
+    "sequelize": "^6.32.1",
+    "ua-parser-js": "^2.0.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}

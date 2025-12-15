@@ -1,0 +1,340 @@
+{
+  "users": [
+    {
+      "id": "1",
+      "firebase_uid": "firebase_uid_user_001",
+      "auth_provider": "google",
+      "password_hash": null,
+      "email": "john.doe@example.com",
+      "display_name": "John Doe",
+      "avatar_url": "https://example.com/avatars/john.jpg",
+      "is_active": true
+    },
+    {
+      "id": "2",
+      "firebase_uid": "firebase_uid_user_002",
+      "auth_provider": "google",
+      "password_hash": null,
+      "email": "jane.smith@example.com",
+      "display_name": "Jane Smith",
+      "avatar_url": null,
+      "is_active": true
+    }
+  ],
+  "stacks": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440001",
+      "user_id": "1",
+      "name": "Work Projects",
+      "description": "All work-related notebooks",
+      "color_id": 1,
+      "sort_order": 0
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440002",
+      "user_id": "1",
+      "name": "Personal",
+      "description": "Personal notes and journals",
+      "color_id": 2,
+      "sort_order": 1
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440003",
+      "user_id": "2",
+      "name": "Learning",
+      "description": "Educational content and courses",
+      "color_id": 3,
+      "sort_order": 0
+    }
+  ],
+  "notebooks": [
+    {
+      "id": "660e8400-e29b-41d4-a716-446655440001",
+      "user_id": "1",
+      "stack_id": "550e8400-e29b-41d4-a716-446655440001",
+      "name": "Q4 Planning",
+      "description": "Quarter 4 project planning and meetings",
+      "color_id": 4,
+      "sort_order": 0
+    },
+    {
+      "id": "660e8400-e29b-41d4-a716-446655440002",
+      "user_id": "1",
+      "stack_id": "550e8400-e29b-41d4-a716-446655440001",
+      "name": "Team Meetings",
+      "description": "Weekly team meeting notes",
+      "color_id": 5,
+      "sort_order": 1
+    },
+    {
+      "id": "660e8400-e29b-41d4-a716-446655440003",
+      "user_id": "1",
+      "stack_id": "550e8400-e29b-41d4-a716-446655440002",
+      "name": "Daily Journal",
+      "description": "Personal daily reflections",
+      "color_id": 2,
+      "sort_order": 0
+    },
+    {
+      "id": "660e8400-e29b-41d4-a716-446655440004",
+      "user_id": "2",
+      "stack_id": "550e8400-e29b-41d4-a716-446655440003",
+      "name": "JavaScript Notes",
+      "description": "JavaScript learning notes",
+      "color_id": 1,
+      "sort_order": 0
+    },
+    {
+      "id": "660e8400-e29b-41d4-a716-446655440005",
+      "user_id": "1",
+      "stack_id": null,
+      "name": "Quick Notes",
+      "description": null,
+      "color_id": null,
+      "sort_order": 0
+    }
+  ],
+  "tags": [
+    {
+      "id": 1,
+      "user_id": "1",
+      "name": "Important",
+      "color_id": 2
+    },
+    {
+      "id": 2,
+      "user_id": "1",
+      "name": "Meeting",
+      "color_id": 1
+    },
+    {
+      "id": 3,
+      "user_id": "1",
+      "name": "Todo",
+      "color_id": 3
+    },
+    {
+      "id": 4,
+      "user_id": "2",
+      "name": "Learning",
+      "color_id": 4
+    },
+    {
+      "id": 5,
+      "user_id": "2",
+      "name": "Reference",
+      "color_id": 5
+    }
+  ],
+  "notes": [
+    {
+      "id": "770e8400-e29b-41d4-a716-446655440001",
+      "user_id": "1",
+      "notebook_id": "660e8400-e29b-41d4-a716-446655440001",
+      "firebase_document_id": "770e8400-e29b-41d4-a716-446655440001",
+      "title": "Q4 Goals and Objectives",
+      "pinned": true,
+      "archived": false,
+      "trashed": false,
+      "version": 1,
+      "synced": true
+    },
+    {
+      "id": "770e8400-e29b-41d4-a716-446655440002",
+      "user_id": "1",
+      "notebook_id": "660e8400-e29b-41d4-a716-446655440001",
+      "firebase_document_id": "770e8400-e29b-41d4-a716-446655440002",
+      "title": "Team Standup - Oct 15",
+      "pinned": false,
+      "archived": false,
+      "trashed": false,
+      "version": 1,
+      "synced": true
+    },
+    {
+      "id": "770e8400-e29b-41d4-a716-446655440003",
+      "user_id": "1",
+      "notebook_id": "660e8400-e29b-41d4-a716-446655440002",
+      "firebase_document_id": "770e8400-e29b-41d4-a716-446655440003",
+      "title": "Today's Reflection",
+      "pinned": false,
+      "archived": false,
+      "trashed": false,
+      "version": 1,
+      "synced": false
+    },
+    {
+      "id": "770e8400-e29b-41d4-a716-446655440004",
+      "user_id": "2",
+      "notebook_id": "660e8400-e29b-41d4-a716-446655440004",
+      "firebase_document_id": "770e8400-e29b-41d4-a716-446655440004",
+      "title": "JavaScript Promises Explained",
+      "pinned": true,
+      "archived": false,
+      "trashed": false,
+      "version": 2,
+      "synced": true
+    },
+    {
+      "id": "770e8400-e29b-41d4-a716-446655440005",
+      "user_id": "1",
+      "notebook_id": null,
+      "firebase_document_id": "770e8400-e29b-41d4-a716-446655440005",
+      "title": "Random Thought",
+      "pinned": false,
+      "archived": false,
+      "trashed": false,
+      "version": 1,
+      "synced": false
+    }
+  ],
+  "note_tags": [
+    {
+      "note_id": "770e8400-e29b-41d4-a716-446655440001",
+      "tag_id": 1
+    },
+    {
+      "note_id": "770e8400-e29b-41d4-a716-446655440001",
+      "tag_id": 2
+    },
+    {
+      "note_id": "770e8400-e29b-41d4-a716-446655440002",
+      "tag_id": 2
+    },
+    {
+      "note_id": "770e8400-e29b-41d4-a716-446655440002",
+      "tag_id": 3
+    },
+    {
+      "note_id": "770e8400-e29b-41d4-a716-446655440004",
+      "tag_id": 4
+    },
+    {
+      "note_id": "770e8400-e29b-41d4-a716-446655440004",
+      "tag_id": 5
+    }
+  ],
+  "files": [
+    {
+      "id": "880e8400-e29b-41d4-a716-446655440001",
+      "user_id": "1",
+      "note_id": "770e8400-e29b-41d4-a716-446655440001",
+      "firebase_storage_path": "users/1/files/q4-goals-presentation.pdf",
+      "filename": "Q4_Goals_Presentation.pdf",
+      "mime_type": "application/pdf",
+      "size": 2048576,
+      "description": "Q4 planning presentation"
+    },
+    {
+      "id": "880e8400-e29b-41d4-a716-446655440002",
+      "user_id": "1",
+      "note_id": "770e8400-e29b-41d4-a716-446655440002",
+      "firebase_storage_path": "users/1/files/standup-notes-oct15.jpg",
+      "filename": "standup_notes_oct15.jpg",
+      "mime_type": "image/jpeg",
+      "size": 524288,
+      "description": null
+    },
+    {
+      "id": "880e8400-e29b-41d4-a716-446655440003",
+      "user_id": "2",
+      "note_id": null,
+      "firebase_storage_path": "users/2/files/reference-doc.docx",
+      "filename": "reference_document.docx",
+      "mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "size": 1536000,
+      "description": "General reference document"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "990e8400-e29b-41d4-a716-446655440001",
+      "note_id": "770e8400-e29b-41d4-a716-446655440001",
+      "label": "Review Q4 budget",
+      "completed": false,
+      "sort_order": 0
+    },
+    {
+      "id": "990e8400-e29b-41d4-a716-446655440002",
+      "note_id": "770e8400-e29b-41d4-a716-446655440001",
+      "label": "Schedule team meeting",
+      "completed": true,
+      "sort_order": 1
+    },
+    {
+      "id": "990e8400-e29b-41d4-a716-446655440003",
+      "note_id": "770e8400-e29b-41d4-a716-446655440002",
+      "label": "Follow up on action items",
+      "completed": false,
+      "sort_order": 0
+    },
+    {
+      "id": "990e8400-e29b-41d4-a716-446655440004",
+      "note_id": "770e8400-e29b-41d4-a716-446655440004",
+      "label": "Practice async/await examples",
+      "completed": false,
+      "sort_order": 0
+    },
+    {
+      "id": "990e8400-e29b-41d4-a716-446655440005",
+      "note_id": "770e8400-e29b-41d4-a716-446655440004",
+      "label": "Read MDN documentation",
+      "completed": true,
+      "sort_order": 1
+    }
+  ],
+  "user_settings": [
+    {
+      "user_id": "1",
+      "setting_key": "theme",
+      "setting_value": "dark"
+    },
+    {
+      "user_id": "1",
+      "setting_key": "default_notebook_id",
+      "setting_value": "660e8400-e29b-41d4-a716-446655440001"
+    },
+    {
+      "user_id": "1",
+      "setting_key": "sidebar_collapsed",
+      "setting_value": "false"
+    },
+    {
+      "user_id": "2",
+      "setting_key": "theme",
+      "setting_value": "light"
+    },
+    {
+      "user_id": "2",
+      "setting_key": "auto_save",
+      "setting_value": "true"
+    }
+  ],
+  "colors": [
+    {
+      "id": 1,
+      "name": "Indigo",
+      "hex_code": "#6366F1"
+    },
+    {
+      "id": 2,
+      "name": "Pink",
+      "hex_code": "#EC4899"
+    },
+    {
+      "id": 3,
+      "name": "Emerald",
+      "hex_code": "#10B981"
+    },
+    {
+      "id": 4,
+      "name": "Sky",
+      "hex_code": "#0EA5E9"
+    },
+    {
+      "id": 5,
+      "name": "Slate",
+      "hex_code": "#64748B"
+    }
+  ]
+}
