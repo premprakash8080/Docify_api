@@ -1,5 +1,6 @@
 const Sequelize = require("sequelize");
-const Note = require("../models/note");
+const NoteListView = require("../models/note_list_view");
+const NoteSummaryView = require("../models/note_summary_view");
 
 const CalendarController = () => {
   /**
@@ -72,9 +73,10 @@ const CalendarController = () => {
           });
       }
 
+      // Use note_list_view for comprehensive note data with relationships
       // Get notes where created_at, updated_at, or last_modified falls within the date range
       // Exclude trashed notes
-      const notes = await Note.findAll({
+      const notes = await NoteListView.findAll({
         where: {
           user_id: req.user.id,
           trashed: false,
@@ -99,18 +101,11 @@ const CalendarController = () => {
         order: [["created_at", "DESC"]],
       });
 
-      // Format notes as calendar events
+      // Notes from view already have all necessary data
+      // Add type field to identify as calendar events
       const events = notes.map((note) => ({
-        id: note.id,
-        title: note.title,
-        date: note.created_at,
-        created_at: note.created_at,
-        updated_at: note.updated_at,
-        last_modified: note.last_modified,
-        notebook_id: note.notebook_id,
-        pinned: note.pinned,
-        archived: note.archived,
-        type: "note", // Calendar event type
+        ...note.toJSON(),
+        type: "note",
       }));
 
       return res.status(200).json({
@@ -158,7 +153,8 @@ const CalendarController = () => {
         });
       }
 
-      const note = await Note.findOne({
+      // Use note_list_view for comprehensive note data
+      const note = await NoteListView.findOne({
         where: {
           id,
           user_id: req.user.id,
@@ -173,27 +169,14 @@ const CalendarController = () => {
         });
       }
 
-      // Format note as calendar event
-      const event = {
-        id: note.id,
-        title: note.title,
-        date: note.created_at,
-        created_at: note.created_at,
-        updated_at: note.updated_at,
-        last_modified: note.last_modified,
-        notebook_id: note.notebook_id,
-        pinned: note.pinned,
-        archived: note.archived,
-        version: note.version,
-        synced: note.synced,
-        firebase_document_id: note.firebase_document_id,
-        type: "note",
-      };
-
+      // Note from view already has all necessary data
       return res.status(200).json({
         success: true,
         data: {
-          event,
+          event: {
+            ...note.toJSON(),
+            type: "note",
+          },
         },
       });
     } catch (error) {
@@ -252,9 +235,10 @@ const CalendarController = () => {
       startDate.setHours(0, 0, 0, 0);
       endDate.setHours(23, 59, 59, 999);
 
+      // Use note_list_view for comprehensive note data with relationships
       // Get notes where created_at, updated_at, or last_modified falls within the date range
       // Exclude trashed notes
-      const notes = await Note.findAll({
+      const notes = await NoteListView.findAll({
         where: {
           user_id: req.user.id,
           trashed: false,

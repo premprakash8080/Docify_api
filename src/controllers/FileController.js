@@ -151,7 +151,7 @@ const FileController = () => {
   /**
    * @description Get all files for the authenticated user
    * @param req.user - User from authentication middleware
-   * @param req.query.note_id - Optional filter by note_id
+   * @param req.body.note_id - Optional filter by note_id
    * @returns list of files
    */
   const getAllFiles = async (req, res) => {
@@ -163,7 +163,7 @@ const FileController = () => {
         });
       }
 
-      const { note_id } = req.query;
+      const { note_id } = req.body || {};
       const whereClause = { user_id: req.user.id };
 
       if (note_id) {
@@ -195,7 +195,7 @@ const FileController = () => {
   /**
    * @description Get a single file by ID
    * @param req.user - User from authentication middleware
-   * @param req.params.id - File ID
+   * @param req.body.id - File ID
    * @returns file details
    */
   const getFileById = async (req, res) => {
@@ -207,7 +207,14 @@ const FileController = () => {
         });
       }
 
-      const { id } = req.params;
+      const { id } = req.body;
+
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          msg: "File ID is required",
+        });
+      }
 
       const file = await File.findOne({
         where: {
@@ -243,7 +250,7 @@ const FileController = () => {
   /**
    * @description Update file metadata
    * @param req.user - User from authentication middleware
-   * @param req.params.id - File ID
+   * @param req.body.id - File ID
    * @param req.body.filename - New filename (optional)
    * @param req.body.description - New description (optional)
    * @returns updated file
@@ -257,7 +264,14 @@ const FileController = () => {
         });
       }
 
-      const { id } = req.params;
+      const { id } = req.body;
+
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          msg: "File ID is required",
+        });
+      }
       const { filename, description } = req.body;
 
       const file = await File.findOne({
@@ -301,7 +315,7 @@ const FileController = () => {
   /**
    * @description Delete a file
    * @param req.user - User from authentication middleware
-   * @param req.params.id - File ID
+   * @param req.body.id - File ID
    * @returns success message
    */
   const deleteFile = async (req, res) => {
@@ -313,7 +327,14 @@ const FileController = () => {
         });
       }
 
-      const { id } = req.params;
+      const { id } = req.body;
+
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          msg: "File ID is required",
+        });
+      }
 
       const file = await File.findOne({
         where: {
@@ -352,8 +373,8 @@ const FileController = () => {
   /**
    * @description Attach file to a note
    * @param req.user - User from authentication middleware
-   * @param req.params.id - File ID
-   * @param req.params.noteId - Note ID
+   * @param req.body.id - File ID
+   * @param req.body.noteId - Note ID
    * @returns updated file
    */
   const attachFileToNote = async (req, res) => {
@@ -365,7 +386,14 @@ const FileController = () => {
         });
       }
 
-      const { id, noteId } = req.params;
+      const { id, noteId } = req.body;
+
+      if (!id || !noteId) {
+        return res.status(400).json({
+          success: false,
+          msg: "File ID and Note ID are required",
+        });
+      }
 
       // Verify file belongs to user
       const file = await File.findOne({
@@ -422,7 +450,7 @@ const FileController = () => {
   /**
    * @description Detach file from note
    * @param req.user - User from authentication middleware
-   * @param req.params.id - File ID
+   * @param req.body.id - File ID
    * @returns updated file
    */
   const detachFileFromNote = async (req, res) => {
@@ -434,7 +462,14 @@ const FileController = () => {
         });
       }
 
-      const { id } = req.params;
+      const { id } = req.body;
+
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          msg: "File ID is required",
+        });
+      }
 
       // Verify file belongs to user
       const file = await File.findOne({
@@ -483,7 +518,7 @@ const FileController = () => {
   /**
    * @description Get all files attached to a note
    * @param req.user - User from authentication middleware
-   * @param req.params.noteId - Note ID
+   * @param req.body.noteId - Note ID
    * @returns list of files
    */
   const getNoteFiles = async (req, res) => {
@@ -495,7 +530,14 @@ const FileController = () => {
         });
       }
 
-      const { noteId } = req.params;
+      const { noteId } = req.body;
+
+      if (!noteId) {
+        return res.status(400).json({
+          success: false,
+          msg: "Note ID is required",
+        });
+      }
 
       // Verify note belongs to user
       const note = await Note.findOne({

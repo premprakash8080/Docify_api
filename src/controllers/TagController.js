@@ -139,7 +139,7 @@ const TagController = () => {
   /**
    * @description Get a single tag by ID
    * @param req.user - User from authentication middleware
-   * @param req.params.id - Tag ID
+   * @param req.body.id - Tag ID
    * @returns tag details
    */
   const getTagById = async (req, res) => {
@@ -151,7 +151,14 @@ const TagController = () => {
         });
       }
 
-      const { id } = req.params;
+      const { id } = req.body;
+
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          msg: "Tag ID is required",
+        });
+      }
 
       const tag = await Tag.findOne({
         where: {
@@ -193,7 +200,7 @@ const TagController = () => {
   /**
    * @description Update a tag
    * @param req.user - User from authentication middleware
-   * @param req.params.id - Tag ID
+   * @param req.body.id - Tag ID
    * @param req.body.name - New tag name (optional)
    * @param req.body.color_id - New color ID (optional)
    * @returns updated tag
@@ -207,7 +214,14 @@ const TagController = () => {
         });
       }
 
-      const { id } = req.params;
+      const { id } = req.body;
+
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          msg: "Tag ID is required",
+        });
+      }
       const { name, color_id } = req.body;
 
       const tag = await Tag.findOne({
@@ -292,7 +306,7 @@ const TagController = () => {
   /**
    * @description Delete a tag
    * @param req.user - User from authentication middleware
-   * @param req.params.id - Tag ID
+   * @param req.body.id - Tag ID
    * @returns success message
    */
   const deleteTag = async (req, res) => {
@@ -304,7 +318,14 @@ const TagController = () => {
         });
       }
 
-      const { id } = req.params;
+      const { id } = req.body;
+
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          msg: "Tag ID is required",
+        });
+      }
 
       const tag = await Tag.findOne({
         where: {
@@ -347,8 +368,8 @@ const TagController = () => {
   /**
    * @description Attach a tag to a note
    * @param req.user - User from authentication middleware
-   * @param req.params.id - Tag ID
-   * @param req.params.noteId - Note ID
+   * @param req.body.id - Tag ID
+   * @param req.body.noteId - Note ID
    * @returns success message
    */
   const attachTagToNote = async (req, res) => {
@@ -360,7 +381,14 @@ const TagController = () => {
         });
       }
 
-      const { id: tagId, noteId } = req.params;
+      const { id: tagId, noteId } = req.body;
+
+      if (!tagId || !noteId) {
+        return res.status(400).json({
+          success: false,
+          msg: "Tag ID and Note ID are required",
+        });
+      }
 
       // Verify tag belongs to user
       const tag = await Tag.findOne({
@@ -430,8 +458,8 @@ const TagController = () => {
   /**
    * @description Detach a tag from a note
    * @param req.user - User from authentication middleware
-   * @param req.params.id - Tag ID
-   * @param req.params.noteId - Note ID
+   * @param req.body.id - Tag ID
+   * @param req.body.noteId - Note ID
    * @returns success message
    */
   const detachTagFromNote = async (req, res) => {
@@ -443,7 +471,14 @@ const TagController = () => {
         });
       }
 
-      const { id: tagId, noteId } = req.params;
+      const { id: tagId, noteId } = req.body;
+
+      if (!tagId || !noteId) {
+        return res.status(400).json({
+          success: false,
+          msg: "Tag ID and Note ID are required",
+        });
+      }
 
       // Verify tag belongs to user
       const tag = await Tag.findOne({

@@ -133,7 +133,7 @@ const StackController = () => {
   /**
    * @description Get a single stack by ID
    * @param req.user - User from authentication middleware
-   * @param req.params.id - Stack ID
+   * @param req.body.id - Stack ID
    * @returns stack details
    */
   const getStackById = async (req, res) => {
@@ -145,7 +145,14 @@ const StackController = () => {
         });
       }
 
-      const { id } = req.params;
+      const { id } = req.body;
+
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          msg: "Stack ID is required",
+        });
+      }
 
       // Use stack_summary_view for comprehensive stack data
       const stack = await StackSummaryView.findOne({
@@ -181,7 +188,7 @@ const StackController = () => {
   /**
    * @description Update a stack
    * @param req.user - User from authentication middleware
-   * @param req.params.id - Stack ID
+   * @param req.body.id - Stack ID
    * @param req.body.name - New stack name (optional)
    * @param req.body.description - New description (optional)
    * @param req.body.color_id - New color ID (optional)
@@ -197,7 +204,14 @@ const StackController = () => {
         });
       }
 
-      const { id } = req.params;
+      const { id } = req.body;
+
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          msg: "Stack ID is required",
+        });
+      }
       const { name, description, color_id, sort_order } = req.body;
 
       const stack = await Stack.findOne({
@@ -264,7 +278,7 @@ const StackController = () => {
   /**
    * @description Delete a stack
    * @param req.user - User from authentication middleware
-   * @param req.params.id - Stack ID
+   * @param req.body.id - Stack ID
    * @returns success message
    */
   const deleteStack = async (req, res) => {
@@ -276,7 +290,14 @@ const StackController = () => {
         });
       }
 
-      const { id } = req.params;
+      const { id } = req.body;
+
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          msg: "Stack ID is required",
+        });
+      }
 
       const stack = await Stack.findOne({
         where: {
@@ -397,7 +418,7 @@ const StackController = () => {
   /**
    * @description Get all notebooks in a stack
    * @param req.user - User from authentication middleware
-   * @param req.params.id - Stack ID
+   * @param req.body.id - Stack ID
    * @returns list of notebooks in the stack
    */
   const getStackNotebooks = async (req, res) => {
@@ -409,7 +430,14 @@ const StackController = () => {
         });
       }
 
-      const { id } = req.params;
+      const { id } = req.body;
+
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          msg: "Stack ID is required",
+        });
+      }
 
       // Verify stack belongs to user
       const stack = await Stack.findOne({
