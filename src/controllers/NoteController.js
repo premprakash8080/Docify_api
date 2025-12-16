@@ -1,4 +1,5 @@
 const Sequelize = require("sequelize");
+const { v4: uuidv4 } = require("uuid");
 const Note = require("../models/note");
 const Notebook = require("../models/notebook");
 const Stack = require("../models/stack");
@@ -36,8 +37,9 @@ const NoteController = () => {
         });
       }
 
-      // Validate notebook_id if provided
-      if (notebook_id) {
+      // Validate notebook_id if provided (not null, undefined, or empty string)
+      let validatedNotebookId = null;
+      if (notebook_id && notebook_id !== null && notebook_id !== undefined && notebook_id !== '') {
         const notebook = await Notebook.findOne({
           where: {
             id: notebook_id,
@@ -51,17 +53,55 @@ const NoteController = () => {
             msg: "Notebook not found",
           });
         }
+        
+        validatedNotebookId = notebook_id;
+      }
+
+      // Notebook Association Logic:
+      // If notebook_id is NOT provided or is null, ensure note is associated with a notebook
+      if (validatedNotebookId === null) {
+        // Check if user has any notebooks
+        const userNotebooks = await Notebook.findAll({
+          where: {
+            user_id: req.user.id,
+          },
+          order: [["created_at", "ASC"]], // Oldest first
+          limit: 1,
+        });
+
+        if (userNotebooks.length > 0) {
+          // User has notebooks - use the first (oldest) one
+          validatedNotebookId = userNotebooks[0].id;
+        } else {
+          // User has NO notebooks - create a default "Untitled" notebook
+          const defaultNotebook = await Notebook.create({
+            user_id: req.user.id,
+            name: "Untitled",
+            description: null,
+            stack_id: null,
+            color_id: null,
+            sort_order: 0,
+          });
+          validatedNotebookId = defaultNotebook.id;
+        }
       }
 
       // Generate Firebase document ID (use provided or let Sequelize generate note ID first)
       // Note: Sequelize will auto-generate UUID for id field
-      const firebaseDocId = firebase_document_id;
+      // Ensure firebase_document_id is always a string
+      let initialFirebaseDocId = firebase_document_id;
+      if (initialFirebaseDocId === undefined || initialFirebaseDocId === null || initialFirebaseDocId === '') {
+        // Generate a UUID string (not the Sequelize function reference)
+        initialFirebaseDocId = uuidv4();
+      } else {
+        initialFirebaseDocId = String(initialFirebaseDocId);
+      }
 
-      // Create note (Sequelize will auto-generate UUID for id)
+      // Create note - always include notebook_id (ensured above)
       const note = await Note.create({
         user_id: req.user.id,
-        notebook_id: notebook_id || null,
-        firebase_document_id: firebaseDocId || null, // Will be set to note.id after creation if not provided
+        notebook_id: validatedNotebookId, // Always assigned to a notebook
+        firebase_document_id: initialFirebaseDocId,
         title: title.trim(),
         pinned: false,
         archived: false,
@@ -70,17 +110,129 @@ const NoteController = () => {
         synced: false,
       });
 
-      // If firebase_document_id was not provided, use the generated note ID
-      if (!firebaseDocId) {
-        await note.update({ firebase_document_id: note.id });
-        await note.reload(); // Reload to get updated firebase_document_id
+      // Reload note with relationships to format response properly
+      const noteWithRelations = await Note.findOne({
+        where: {
+          id: note.id,
+          user_id: req.user.id,
+        },
+        include: [
+          {
+            model: Notebook,
+            as: "notebook",
+            required: false,
+            include: [
+              {
+                model: Stack,
+                as: "stack",
+                required: false,
+                include: [
+                  {
+                    model: Color,
+                    as: "color",
+                    attributes: ["id", "name", "hex_code"],
+                    required: false,
+                  },
+                ],
+                attributes: ["id", "name", "description", "color_id"],
+              },
+              {
+                model: Color,
+                as: "color",
+                attributes: ["id", "name", "hex_code"],
+                required: false,
+              },
+            ],
+            attributes: ["id", "name", "description", "color_id", "stack_id"],
+          },
+          {
+            model: User,
+            as: "user",
+            attributes: ["id", "email", "display_name"],
+            required: false,
+          },
+        ],
+      });
+
+      if (!noteWithRelations) {
+        return res.status(500).json({
+          success: false,
+          msg: "Failed to retrieve created note",
+        });
       }
+
+      const noteData = noteWithRelations.toJSON();
+
+      // Get aggregated counts
+      const tagCount = await NoteTag.count({
+        where: { note_id: note.id },
+      });
+
+      const fileCount = await File.count({
+        where: { note_id: note.id },
+      });
+
+      const taskStats = await Task.findAll({
+        where: { note_id: note.id },
+        attributes: [
+          [Sequelize.fn("COUNT", Sequelize.col("id")), "task_count"],
+          [
+            Sequelize.fn(
+              "SUM",
+              Sequelize.literal("CASE WHEN completed = 1 THEN 1 ELSE 0 END")
+            ),
+            "completed_task_count",
+          ],
+        ],
+        raw: true,
+      });
+
+      const taskCount = taskStats[0]?.task_count || 0;
+      const completedTaskCount = taskStats[0]?.completed_task_count || 0;
+
+      // Format response to match getNoteById structure
+      const responseData = {
+        id: noteData.id,
+        user_id: noteData.user_id,
+        notebook_id: noteData.notebook_id,
+        firebase_document_id: noteData.firebase_document_id,
+        title: noteData.title,
+        pinned: noteData.pinned,
+        archived: noteData.archived,
+        trashed: noteData.trashed,
+        version: noteData.version,
+        synced: noteData.synced,
+        created_at: noteData.created_at,
+        updated_at: noteData.updated_at,
+        last_modified: noteData.last_modified,
+        // Notebook information
+        notebook_name: noteData.notebook?.name || null,
+        notebook_description: noteData.notebook?.description || null,
+        notebook_color_id: noteData.notebook?.color_id || null,
+        notebook_color_hex: noteData.notebook?.color?.hex_code || null,
+        notebook_color_name: noteData.notebook?.color?.name || null,
+        // Stack information
+        stack_id: noteData.notebook?.stack?.id || null,
+        stack_name: noteData.notebook?.stack?.name || null,
+        stack_description: noteData.notebook?.stack?.description || null,
+        stack_color_id: noteData.notebook?.stack?.color_id || null,
+        stack_color_hex: noteData.notebook?.stack?.color?.hex_code || null,
+        stack_color_name: noteData.notebook?.stack?.color?.name || null,
+        // User information
+        user_email: noteData.user?.email || null,
+        user_display_name: noteData.user?.display_name || null,
+        // Aggregated counts
+        tag_count: tagCount,
+        file_count: fileCount,
+        task_count: parseInt(taskCount) || 0,
+        completed_task_count: parseInt(completedTaskCount) || 0,
+      };
 
       return res.status(201).json({
         success: true,
         msg: "Note created successfully",
         data: {
-          note,
+          note: responseData,
         },
       });
     } catch (error) {
