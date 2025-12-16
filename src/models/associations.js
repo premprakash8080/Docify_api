@@ -8,6 +8,7 @@ const Task = require("./task");
 const NoteTag = require("./noteTag");
 const Color = require("./color");
 const UserSetting = require("./userSetting");
+const Template = require("./template");
 
 // Centralized model associations for Evernote-style project
 
@@ -17,6 +18,7 @@ User.hasMany(Notebook, { foreignKey: "user_id", as: "notebooks" });
 User.hasMany(Tag, { foreignKey: "user_id", as: "tags" });
 User.hasMany(Note, { foreignKey: "user_id", as: "notes" });
 User.hasMany(File, { foreignKey: "user_id", as: "files" });
+User.hasMany(Template, { foreignKey: "user_id", as: "templates" });
 // Each user has a single settings row
 User.hasOne(UserSetting, { foreignKey: "user_id", as: "settings" });
 UserSetting.belongsTo(User, { foreignKey: "user_id", as: "user" });
@@ -35,12 +37,7 @@ Note.hasMany(Task, { foreignKey: "note_id", as: "tasks" });
 Note.hasMany(File, { foreignKey: "note_id", as: "files" });
 Note.belongsTo(Notebook, { foreignKey: "notebook_id", as: "notebook" });
 Note.belongsTo(User, { foreignKey: "user_id", as: "user" });
-Note.belongsToMany(Tag, {
-  through: NoteTag,
-  foreignKey: "note_id",
-  otherKey: "tag_id",
-  as: "tags",
-});
+Note.belongsToMany(Tag, { through: NoteTag, foreignKey: "note_id", otherKey: "tag_id", as: "tags" });
 
 // Tag relationships
 Tag.belongsTo(Color, { foreignKey: "color_id", as: "color" });
@@ -62,6 +59,7 @@ module.exports = {
   NoteTag,
   Color,
   UserSetting,
+  Template,
 };
 
 

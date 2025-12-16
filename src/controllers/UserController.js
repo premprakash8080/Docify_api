@@ -561,10 +561,11 @@ const UserController = () => {
       const [settings] = await UserSetting.findOrCreate({
         where: { user_id: req.user.id },
         defaults: {
-          theme_layout: "default",
-          theme_color: "light",
-          corners: "rounded",
-          button_style: "solid",
+          theme_layout: "vex-layout-apollo",
+          theme_color: "vex-style-default",
+          theme_primary_color: "blue",
+          corners: "0.5rem",
+          button_style: "0.5rem",
         },
       });
 
@@ -572,6 +573,7 @@ const UserController = () => {
       const settingsObject = {
         theme_layout: settings.theme_layout,
         theme_color: settings.theme_color,
+        theme_primary_color: settings.theme_primary_color,
         corners: settings.corners,
         button_style: settings.button_style,
       };
@@ -606,60 +608,69 @@ const UserController = () => {
           msg: "User not authenticated",
         });
       }
+  
+      // Support either { settings: { ... } } or top-level fields
+      const payload = req.body && req.body.settings ? req.body.settings : req.body || {};
 
-      const { settings } = req.body;
+      const {
+        themeLayout,
+        themeColor,
+        themePrimaryColor,
+        corners,
+        buttonStyle,
+      } = payload;
 
-      if (!settings || typeof settings !== "object") {
-        return res.status(400).json({
-          success: false,
-          msg: "Settings object is required",
-        });
-      }
-
-      // Allowed settings fields for the single settings row
-      const allowedKeys = [
-        "theme_layout",
-        "theme_color",
-        "corners",
-        "button_style",
-      ];
-
-      // Build update payload from allowed keys only
+      // Map frontend → DB fields with normalization
       const updatePayload = {};
-      for (const key of allowedKeys) {
-        if (Object.prototype.hasOwnProperty.call(settings, key)) {
-          updatePayload[key] = settings[key];
-        }
+
+      if (themeLayout !== undefined) {
+        updatePayload.theme_layout = String(themeLayout).startsWith('vex-layout-')
+          ? themeLayout
+          : `vex-layout-${themeLayout}`;
       }
 
-      // Find or create the settings row for this user
+      if (themeColor !== undefined) {
+        updatePayload.theme_color = String(themeColor).startsWith('vex-style-')
+          ? themeColor
+          : `vex-style-${themeColor}`;
+      }
+
+      if (themePrimaryColor !== undefined) {
+        updatePayload.theme_primary_color = themePrimaryColor;
+      }
+
+      if (corners !== undefined) updatePayload.corners = corners;
+      if (buttonStyle !== undefined) updatePayload.button_style = buttonStyle;
+
+      // Find or create settings (1 row per user)
       const [userSettings] = await UserSetting.findOrCreate({
         where: { user_id: req.user.id },
         defaults: {
-          theme_layout: "default",
-          theme_color: "light",
-          corners: "rounded",
-          button_style: "solid",
+          theme_layout: "vex-layout-apollo",
+          theme_color: "vex-style-default",
+          theme_primary_color: "blue",
+          corners: "0.5rem",
+          button_style: "0.5rem",
         },
       });
-
-      // Apply updates if there are any allowed keys
+  
+      // Update only if payload has values
       if (Object.keys(updatePayload).length > 0) {
         await userSettings.update(updatePayload);
       }
-
-      const updatedSettings = {
-        theme_layout: userSettings.theme_layout,
-        theme_color: userSettings.theme_color,
-        corners: userSettings.corners,
-        button_style: userSettings.button_style,
-      };
-
+  
+      // Return frontend-friendly response
       return res.status(200).json({
         success: true,
         msg: "Settings updated successfully",
         data: {
-          settings: updatedSettings,
+          id: userSettings.id,
+          userId: userSettings.user_id,
+          themeLayout: userSettings.theme_layout,
+          themeColor: userSettings.theme_color,
+          themePrimaryColor: userSettings.theme_primary_color,
+          corners: userSettings.corners,
+          buttonStyle: userSettings.button_style,
         },
       });
     } catch (error) {
@@ -667,10 +678,10 @@ const UserController = () => {
       return res.status(500).json({
         success: false,
         msg: "Internal server error",
-        error: error.message,
       });
     }
   };
+  
 
   /**
    * @description Delete user account (soft delete by deactivating)

@@ -8,6 +8,7 @@ const File = require("../models/file");
 const Task = require("../models/task");
 const UserSetting = require("../models/userSetting");
 const Color = require("../models/color");
+const Template = require("../models/template");
 const preData = require("../config/preData.json");
 
 // Minimal helper to bulk insert while ignoring duplicates
@@ -29,7 +30,7 @@ const initiatePreData = async () => {
     await File.sync();
     await Task.sync();
     await UserSetting.sync();
-
+    await Template.sync();
     //Checking existing Event Types table data
 
     //Checking existing Colors table data
@@ -131,6 +132,15 @@ const initiatePreData = async () => {
       }
     }
 
+    //Checking existing Templates table data
+    let templates = await Template.findAll();
+    if (templates.length == 0) {
+      try {
+        await Template.bulkCreate(preData.templates);
+      } catch (err) {
+        console.error("Error in Template model:", err.message || err);
+      }
+    }
     console.info("PreData syncing completed");
   } catch (err) {
     console.error("Error while syncing PreData:", err.message || err);

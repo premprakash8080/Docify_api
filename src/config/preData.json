@@ -336,5 +336,21 @@
       "name": "Slate",
       "hex_code": "#64748B"
     }
+  ],
+  "templates": [
+    {
+      "id": 1,
+      "user_id": "1",
+      "name": "Default Template",
+      "description": "Default template for notes",
+      "content": "Default template for notes"
+    },
+    {
+      "id": 2,
+      "user_id": "1",
+      "name": "Default Template",
+      "description": "Default template for notes",
+      "content": "Default template for notes"
+    }
   ]
 }
