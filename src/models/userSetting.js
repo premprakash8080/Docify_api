@@ -28,22 +28,22 @@ const UserSetting = database.define(
     theme_layout: {
       type: Sequelize.STRING(50),
       allowNull: false,
-      defaultValue: "default",
+      defaultValue: "vex-layout-apollo",
     },
     theme_color: {
       type: Sequelize.STRING(50),
       allowNull: false,
-      defaultValue: "light",
+      defaultValue: "vex-style-default",
     },
     corners: {
       type: Sequelize.STRING(50),
       allowNull: false,
-      defaultValue: "rounded",
+      defaultValue: "0.5rem",
     },
     button_style: {
       type: Sequelize.STRING(50),
       allowNull: false,
-      defaultValue: "solid",
+      defaultValue: "0.5rem",
     },
     created_at: {
       type: Sequelize.DATE,

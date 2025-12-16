@@ -68,10 +68,10 @@ User.afterCreate(async (user, options) => {
     await UserSetting.findOrCreate({
       where: { user_id: user.id },
       defaults: {
-        theme_layout: "default",
-        theme_color: "light",
-        corners: "rounded",
-        button_style: "solid",
+        theme_layout: "vex-layout-apollo",
+        theme_color: "vex-style-default",
+        corners: "0.5rem",
+        button_style: "0.5rem",
       },
     });
   } catch (error) {

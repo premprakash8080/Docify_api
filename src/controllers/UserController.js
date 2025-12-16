@@ -563,7 +563,6 @@ const UserController = () => {
         defaults: {
           theme_layout: "vex-layout-apollo",
           theme_color: "vex-style-default",
-          theme_primary_color: "blue",
           corners: "0.5rem",
           button_style: "0.5rem",
         },
@@ -573,7 +572,6 @@ const UserController = () => {
       const settingsObject = {
         theme_layout: settings.theme_layout,
         theme_color: settings.theme_color,
-        theme_primary_color: settings.theme_primary_color,
         corners: settings.corners,
         button_style: settings.button_style,
       };
@@ -615,28 +613,26 @@ const UserController = () => {
       const {
         themeLayout,
         themeColor,
-        themePrimaryColor,
         corners,
         buttonStyle,
       } = payload;
 
-      // Map frontend → DB fields with normalization
+      // Map frontend → DB fields
+      // theme_layout stores color scheme (vex-style-default, vex-style-dark, etc.)
+      // theme_color stores primary color key (blue, red, etc.)
       const updatePayload = {};
 
       if (themeLayout !== undefined) {
-        updatePayload.theme_layout = String(themeLayout).startsWith('vex-layout-')
-          ? themeLayout
-          : `vex-layout-${themeLayout}`;
+        // themeLayout can be either:
+        // - Color scheme (vex-style-default, vex-style-dark, etc.) from Theme Layout buttons
+        // - Layout name (vex-layout-apollo, etc.) for legacy support
+        updatePayload.theme_layout = String(themeLayout);
       }
 
       if (themeColor !== undefined) {
-        updatePayload.theme_color = String(themeColor).startsWith('vex-style-')
-          ? themeColor
-          : `vex-style-${themeColor}`;
-      }
-
-      if (themePrimaryColor !== undefined) {
-        updatePayload.theme_primary_color = themePrimaryColor;
+        // themeColor stores primary color key (blue, red, etc.) from Theme Colors picker
+        // Don't add vex-style- prefix as it's a color key, not a color scheme
+        updatePayload.theme_color = String(themeColor);
       }
 
       if (corners !== undefined) updatePayload.corners = corners;
@@ -648,7 +644,6 @@ const UserController = () => {
         defaults: {
           theme_layout: "vex-layout-apollo",
           theme_color: "vex-style-default",
-          theme_primary_color: "blue",
           corners: "0.5rem",
           button_style: "0.5rem",
         },
@@ -659,18 +654,17 @@ const UserController = () => {
         await userSettings.update(updatePayload);
       }
   
-      // Return frontend-friendly response
+      // Return frontend-friendly response (matching getUserSettings format)
       return res.status(200).json({
         success: true,
         msg: "Settings updated successfully",
         data: {
-          id: userSettings.id,
-          userId: userSettings.user_id,
-          themeLayout: userSettings.theme_layout,
-          themeColor: userSettings.theme_color,
-          themePrimaryColor: userSettings.theme_primary_color,
-          corners: userSettings.corners,
-          buttonStyle: userSettings.button_style,
+          settings: {
+            theme_layout: userSettings.theme_layout,
+            theme_color: userSettings.theme_color,
+            corners: userSettings.corners,
+            button_style: userSettings.button_style,
+          },
         },
       });
     } catch (error) {
