@@ -111,7 +111,14 @@ const NoteController = () => {
         });
       }
 
-      const { notebook_id, archived, trashed, pinned } = req.body || {};
+      // Accept filters from both query params (standard) and body (for compatibility)
+      const queryFilters = req.query || {};
+      const bodyFilters = req.body || {};
+      const notebook_id = queryFilters.notebook_id || bodyFilters.notebook_id;
+      const archived = queryFilters.archived !== undefined ? queryFilters.archived : bodyFilters.archived;
+      const trashed = queryFilters.trashed !== undefined ? queryFilters.trashed : bodyFilters.trashed;
+      const pinned = queryFilters.pinned !== undefined ? queryFilters.pinned : bodyFilters.pinned;
+      
       const whereClause = { user_id: req.user.id };
 
       if (notebook_id) {
@@ -119,15 +126,15 @@ const NoteController = () => {
       }
 
       if (archived !== undefined) {
-        whereClause.archived = archived === true || archived === "true";
+        whereClause.archived = archived === true || archived === "true" || archived === true;
       }
 
       if (trashed !== undefined) {
-        whereClause.trashed = trashed === true || trashed === "true";
+        whereClause.trashed = trashed === true || trashed === "true" || trashed === true;
       }
 
       if (pinned !== undefined) {
-        whereClause.pinned = pinned === true || pinned === "true";
+        whereClause.pinned = pinned === true || pinned === "true" || pinned === true;
       }
 
       // Get notes with relationships and aggregated counts
@@ -281,7 +288,8 @@ const NoteController = () => {
         });
       }
 
-      const { id } = req.body;
+      // Get ID from route params (GET /notes/:id)
+      const { id } = req.params;
 
       if (!id) {
         return res.status(400).json({
@@ -442,7 +450,9 @@ const NoteController = () => {
         });
       }
 
-      const { id, title, notebook_id, version } = req.body;
+      // Get ID from route params (PUT /notes/:id)
+      const { id } = req.params;
+      const { title, notebook_id, version } = req.body;
 
       if (!id) {
         return res.status(400).json({
@@ -591,7 +601,8 @@ const NoteController = () => {
         });
       }
 
-      const { id, notebookId } = req.body;
+      // Get IDs from route params (PUT /notes/:id/notebook/:notebookId)
+      const { id, notebookId } = req.params;
 
       if (!id || !notebookId) {
         return res.status(400).json({
@@ -668,7 +679,8 @@ const NoteController = () => {
         });
       }
 
-      const { id } = req.body;
+      // Get ID from route params (PUT /notes/:id/pin)
+      const { id } = req.params;
 
       if (!id) {
         return res.status(400).json({
@@ -728,7 +740,8 @@ const NoteController = () => {
         });
       }
 
-      const { id } = req.body;
+      // Get ID from route params (PUT /notes/:id/unpin)
+      const { id } = req.params;
 
       if (!id) {
         return res.status(400).json({
@@ -788,7 +801,8 @@ const NoteController = () => {
         });
       }
 
-      const { id } = req.body;
+      // Get ID from route params (PUT /notes/:id/archive)
+      const { id } = req.params;
 
       if (!id) {
         return res.status(400).json({
@@ -849,7 +863,8 @@ const NoteController = () => {
         });
       }
 
-      const { id } = req.body;
+      // Get ID from route params (PUT /notes/:id/unarchive)
+      const { id } = req.params;
 
       if (!id) {
         return res.status(400).json({
@@ -909,7 +924,8 @@ const NoteController = () => {
         });
       }
 
-      const { id } = req.body;
+      // Get ID from route params (PUT /notes/:id/trash)
+      const { id } = req.params;
 
       if (!id) {
         return res.status(400).json({
@@ -971,7 +987,8 @@ const NoteController = () => {
         });
       }
 
-      const { id } = req.body;
+      // Get ID from route params (PUT /notes/:id/restore)
+      const { id } = req.params;
 
       if (!id) {
         return res.status(400).json({
@@ -1032,7 +1049,9 @@ const NoteController = () => {
         });
       }
 
-      const { id, version } = req.body;
+      // Get ID from route params (PUT /notes/:id/synced)
+      const { id } = req.params;
+      const { version } = req.body;
 
       if (!id) {
         return res.status(400).json({
@@ -1094,7 +1113,8 @@ const NoteController = () => {
         });
       }
 
-      const { id: noteId, tagId } = req.body;
+      // Get IDs from route params (POST /notes/:id/tags/:tagId)
+      const { id: noteId, tagId } = req.params;
 
       if (!noteId || !tagId) {
         return res.status(400).json({
@@ -1184,7 +1204,8 @@ const NoteController = () => {
         });
       }
 
-      const { id: noteId, tagId } = req.body;
+      // Get IDs from route params (DELETE /notes/:id/tags/:tagId)
+      const { id: noteId, tagId } = req.params;
 
       if (!noteId || !tagId) {
         return res.status(400).json({
@@ -1269,7 +1290,8 @@ const NoteController = () => {
         });
       }
 
-      const { id } = req.body;
+      // Get ID from route params (GET /notes/:id/files)
+      const { id } = req.params;
 
       if (!id) {
         return res.status(400).json({
@@ -1338,7 +1360,8 @@ const NoteController = () => {
         });
       }
 
-      const { id } = req.body;
+      // Get ID from route params (GET /notes/:id/tasks)
+      const { id } = req.params;
 
       if (!id) {
         return res.status(400).json({
