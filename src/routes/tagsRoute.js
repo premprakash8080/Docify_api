@@ -1,4 +1,5 @@
 const router = require("express").Router();
+const jwtVerify = require("../config/jwtVerify");
 
 const {
   createTag,
@@ -13,16 +14,16 @@ const {
 // ==============================
 // Tags CRUD
 // ==============================
-router.post("/", createTag);          // Create tag
-router.get("/", getAllTags);           // List user tags
-router.get("/:id", getTagById);        // Single tag
-router.put("/:id", updateTag);         // Update tag
-router.delete("/:id", deleteTag);      // Delete tag
+router.post("/", jwtVerify, createTag);          // Create tag
+router.get("/", jwtVerify, getAllTags);           // List user tags
+router.get("/:id", jwtVerify, getTagById);        // Single tag
+router.put("/:id", jwtVerify, updateTag);         // Update tag
+router.delete("/:id", jwtVerify, deleteTag);      // Delete tag
 
 // ==============================
 // Tag ↔ Note Relation
 // ==============================
-router.post("/:id/notes/:noteId", attachTagToNote);
-router.delete("/:id/notes/:noteId", detachTagFromNote);
+router.post("/:id/notes/:noteId", jwtVerify, attachTagToNote);
+router.delete("/:id/notes/:noteId", jwtVerify, detachTagFromNote);
 
 module.exports = router;

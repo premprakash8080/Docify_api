@@ -1,4 +1,6 @@
 const database = require("../config/database");
+// Initialize and centralize all model relationships before any syncs
+require("../models/associations");
 var cron = require("node-cron");
 const moment = require("moment");
 const initiatePreData = require("../utils/initiatePreData");
@@ -6,7 +8,7 @@ const { syncViews } = require("../config/db.views");
 
 const dbService = (environment, migrate) => {
   const authenticateDB = () => database.authenticate();
-  // database.sync();
+  database.sync();
   const syncDB = () =>
     database.sync({
       force: true,
@@ -55,8 +57,7 @@ const dbService = (environment, migrate) => {
 
   const startMigrateTrue = async () => {
     try {
-      await syncDB();
-      await syncViews();
+      // await syncDB();
       successfulDBStart();
     } catch (err) {
       errorDBStart(err);
@@ -65,9 +66,8 @@ const dbService = (environment, migrate) => {
 
   const startMigrateFalse = async () => {
     try {
-      await dropDB();
-      await syncDB();
-      await syncViews();
+      // await dropDB();
+      // await syncDB();
       successfulDBStart();
     } catch (err) {
       errorDBStart(err);

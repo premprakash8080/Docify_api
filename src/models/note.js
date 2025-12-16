@@ -6,11 +6,6 @@ const {
   TABLE_NAME_NOTEBOOKS,
 } = require("../config/table_names");
 
-const Task = require("./task");
-const File = require("./file");
-const Tag = require("./tag");
-const NoteTag = require("./noteTag");
-
 const Note = database.define(
   TABLE_NAME_NOTES,
   {
@@ -88,19 +83,6 @@ const Note = database.define(
     underscored: true,
   }
 );
-
-// Relationships:
-// Note 1 - N Task
-// Note 1 - N File
-// Note N - M Tag (via NoteTag)
-Note.hasMany(Task, { foreignKey: "note_id", as: "tasks" });
-Note.hasMany(File, { foreignKey: "note_id", as: "files" });
-Note.belongsToMany(Tag, {
-  through: NoteTag,
-  foreignKey: "note_id",
-  otherKey: "tag_id",
-  as: "tags",
-});
 
 module.exports = Note;
 

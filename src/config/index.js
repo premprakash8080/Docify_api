@@ -1,6 +1,6 @@
 
 const config = {
-  migrate: true,
+  migrate: false,
   port: process.env.PORT || '2017',
 };
 

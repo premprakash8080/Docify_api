@@ -1,6 +1,5 @@
 const Sequelize = require("sequelize");
 const Notebook = require("../models/notebook");
-const NotebookSummaryView = require("../models/notebook_summary_view");
 const Note = require("../models/note");
 const Stack = require("../models/stack");
 const Color = require("../models/color");
@@ -156,17 +155,89 @@ const NotebookController = () => {
         whereClause.stack_id = stack_id;
       }
 
-      // Use notebook_summary_view for comprehensive notebook data with aggregated counts
-      const notebooks = await NotebookSummaryView.findAll({
+      // Get notebooks with relationships and aggregated counts
+      const notebooks = await Notebook.findAll({
         where: whereClause,
+        include: [
+          {
+            model: Color,
+            as: "color",
+            attributes: ["id", "name", "hex_code"],
+            required: false,
+          },
+          {
+            model: Stack,
+            as: "stack",
+            required: false,
+            attributes: ["id", "name", "description"],
+          },
+        ],
         order: [["sort_order", "ASC"], ["created_at", "DESC"]],
       });
+
+      // Get aggregated counts for each notebook
+      const notebooksWithCounts = await Promise.all(
+        notebooks.map(async (notebook) => {
+          const notebookData = notebook.toJSON();
+
+          // Get note counts
+          const noteCounts = await Note.findAll({
+            where: {
+              notebook_id: notebook.id,
+              trashed: false,
+            },
+            attributes: [
+              [Sequelize.fn("COUNT", Sequelize.col("id")), "note_count"],
+              [
+                Sequelize.fn(
+                  "SUM",
+                  Sequelize.literal("CASE WHEN pinned = 1 THEN 1 ELSE 0 END")
+                ),
+                "pinned_notes",
+              ],
+              [
+                Sequelize.fn(
+                  "SUM",
+                  Sequelize.literal("CASE WHEN archived = 1 THEN 1 ELSE 0 END")
+                ),
+                "archived_notes",
+              ],
+            ],
+            raw: true,
+          });
+
+          const noteCount = noteCounts[0]?.note_count || 0;
+          const pinnedNotes = noteCounts[0]?.pinned_notes || 0;
+          const archivedNotes = noteCounts[0]?.archived_notes || 0;
+
+          return {
+            id: notebookData.id,
+            user_id: notebookData.user_id,
+            stack_id: notebookData.stack_id,
+            name: notebookData.name,
+            description: notebookData.description,
+            color_id: notebookData.color_id,
+            color_hex: notebookData.color?.hex_code || null,
+            color_name: notebookData.color?.name || null,
+            sort_order: notebookData.sort_order,
+            created_at: notebookData.created_at,
+            updated_at: notebookData.updated_at,
+            // Stack information
+            stack_name: notebookData.stack?.name || null,
+            stack_description: notebookData.stack?.description || null,
+            // Aggregated counts
+            note_count: parseInt(noteCount) || 0,
+            pinned_notes: parseInt(pinnedNotes) || 0,
+            archived_notes: parseInt(archivedNotes) || 0,
+          };
+        })
+      );
 
       return res.status(200).json({
         success: true,
         data: {
-          notebooks,
-          count: notebooks.length,
+          notebooks: notebooksWithCounts,
+          count: notebooksWithCounts.length,
         },
       });
     } catch (error) {
@@ -203,12 +274,26 @@ const NotebookController = () => {
         });
       }
 
-      // Use notebook_summary_view for comprehensive notebook data
-      const notebook = await NotebookSummaryView.findOne({
+      // Get notebook with relationships and aggregated counts
+      const notebook = await Notebook.findOne({
         where: {
           id,
           user_id: req.user.id,
         },
+        include: [
+          {
+            model: Color,
+            as: "color",
+            attributes: ["id", "name", "hex_code"],
+            required: false,
+          },
+          {
+            model: Stack,
+            as: "stack",
+            required: false,
+            attributes: ["id", "name", "description"],
+          },
+        ],
       });
 
       if (!notebook) {
@@ -218,10 +303,63 @@ const NotebookController = () => {
         });
       }
 
+      const notebookData = notebook.toJSON();
+
+      // Get note counts
+      const noteCounts = await Note.findAll({
+        where: {
+          notebook_id: notebook.id,
+          trashed: false,
+        },
+        attributes: [
+          [Sequelize.fn("COUNT", Sequelize.col("id")), "note_count"],
+          [
+            Sequelize.fn(
+              "SUM",
+              Sequelize.literal("CASE WHEN pinned = 1 THEN 1 ELSE 0 END")
+            ),
+            "pinned_notes",
+          ],
+          [
+            Sequelize.fn(
+              "SUM",
+              Sequelize.literal("CASE WHEN archived = 1 THEN 1 ELSE 0 END")
+            ),
+            "archived_notes",
+          ],
+        ],
+        raw: true,
+      });
+
+      const noteCount = noteCounts[0]?.note_count || 0;
+      const pinnedNotes = noteCounts[0]?.pinned_notes || 0;
+      const archivedNotes = noteCounts[0]?.archived_notes || 0;
+
+      const responseData = {
+        id: notebookData.id,
+        user_id: notebookData.user_id,
+        stack_id: notebookData.stack_id,
+        name: notebookData.name,
+        description: notebookData.description,
+        color_id: notebookData.color_id,
+        color_hex: notebookData.color?.hex_code || null,
+        color_name: notebookData.color?.name || null,
+        sort_order: notebookData.sort_order,
+        created_at: notebookData.created_at,
+        updated_at: notebookData.updated_at,
+        // Stack information
+        stack_name: notebookData.stack?.name || null,
+        stack_description: notebookData.stack?.description || null,
+        // Aggregated counts
+        note_count: parseInt(noteCount) || 0,
+        pinned_notes: parseInt(pinnedNotes) || 0,
+        archived_notes: parseInt(archivedNotes) || 0,
+      };
+
       return res.status(200).json({
         success: true,
         data: {
-          notebook,
+          notebook: responseData,
         },
       });
     } catch (error) {
@@ -299,19 +437,82 @@ const NotebookController = () => {
 
       await notebook.save();
 
-      // Fetch updated notebook from view for comprehensive data
-      const updatedNotebook = await NotebookSummaryView.findOne({
-        where: {
-          id: notebook.id,
-          user_id: req.user.id,
-        },
+      // Fetch updated notebook with relationships and aggregated counts
+      const updatedNotebook = await Notebook.findByPk(notebook.id, {
+        include: [
+          {
+            model: Color,
+            as: "color",
+            attributes: ["id", "name", "hex_code"],
+            required: false,
+          },
+          {
+            model: Stack,
+            as: "stack",
+            required: false,
+            attributes: ["id", "name", "description"],
+          },
+        ],
       });
+
+      const notebookData = updatedNotebook.toJSON();
+
+      // Get note counts
+      const noteCounts = await Note.findAll({
+        where: {
+          notebook_id: notebook.id,
+          trashed: false,
+        },
+        attributes: [
+          [Sequelize.fn("COUNT", Sequelize.col("id")), "note_count"],
+          [
+            Sequelize.fn(
+              "SUM",
+              Sequelize.literal("CASE WHEN pinned = 1 THEN 1 ELSE 0 END")
+            ),
+            "pinned_notes",
+          ],
+          [
+            Sequelize.fn(
+              "SUM",
+              Sequelize.literal("CASE WHEN archived = 1 THEN 1 ELSE 0 END")
+            ),
+            "archived_notes",
+          ],
+        ],
+        raw: true,
+      });
+
+      const noteCount = noteCounts[0]?.note_count || 0;
+      const pinnedNotes = noteCounts[0]?.pinned_notes || 0;
+      const archivedNotes = noteCounts[0]?.archived_notes || 0;
+
+      const responseData = {
+        id: notebookData.id,
+        user_id: notebookData.user_id,
+        stack_id: notebookData.stack_id,
+        name: notebookData.name,
+        description: notebookData.description,
+        color_id: notebookData.color_id,
+        color_hex: notebookData.color?.hex_code || null,
+        color_name: notebookData.color?.name || null,
+        sort_order: notebookData.sort_order,
+        created_at: notebookData.created_at,
+        updated_at: notebookData.updated_at,
+        // Stack information
+        stack_name: notebookData.stack?.name || null,
+        stack_description: notebookData.stack?.description || null,
+        // Aggregated counts
+        note_count: parseInt(noteCount) || 0,
+        pinned_notes: parseInt(pinnedNotes) || 0,
+        archived_notes: parseInt(archivedNotes) || 0,
+      };
 
       return res.status(200).json({
         success: true,
         msg: "Notebook updated successfully",
         data: {
-          notebook: updatedNotebook,
+          notebook: responseData,
         },
       });
     } catch (error) {

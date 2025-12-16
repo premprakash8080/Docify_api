@@ -1,4 +1,5 @@
 const router = require("express").Router();
+const jwtVerify = require("../config/jwtVerify");
 
 const {
   createNotebook,
@@ -12,12 +13,15 @@ const {
   getNotebookNotes
 } = require("../controllers/NotebookController");
 
+// Apply JWT middleware to all routes
+router.use(jwtVerify);
+
 // ==============================
 // Notebooks CRUD
 // ==============================
 router.post("/", createNotebook);            // Create notebook
-router.get("/", getAllNotebooks);             // List user notebooks
-router.get("/:id", getNotebookById);          // Single notebook
+router.post("/list", getAllNotebooks);        // List user notebooks (POST for body params)
+router.post("/:id", getNotebookById);         // Single notebook (POST for body params)
 router.put("/:id", updateNotebook);           // Update notebook
 router.delete("/:id", deleteNotebook);        // Delete notebook
 
@@ -35,6 +39,6 @@ router.delete("/:id/stack", removeNotebookFromStack);
 // ==============================
 // Notebook ↔ Notes
 // ==============================
-router.get("/:id/notes", getNotebookNotes);
+router.post("/:id/notes", getNotebookNotes);  // Get notebook notes (POST for body params)
 
 module.exports = router;

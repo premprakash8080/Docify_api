@@ -18,18 +18,32 @@ const UserSetting = database.define(
     user_id: {
       type: Sequelize.INTEGER,
       allowNull: false,
+      unique: true, // Ensure one settings row per user
       references: {
         model: TABLE_NAME_USERS,
         key: "id",
       },
     },
-    setting_key: {
-      type: Sequelize.STRING(100),
+    // Theme/layout settings - one row per user
+    theme_layout: {
+      type: Sequelize.STRING(50),
       allowNull: false,
+      defaultValue: "default",
     },
-    setting_value: {
-      type: Sequelize.STRING(255),
-      allowNull: true,
+    theme_color: {
+      type: Sequelize.STRING(50),
+      allowNull: false,
+      defaultValue: "light",
+    },
+    corners: {
+      type: Sequelize.STRING(50),
+      allowNull: false,
+      defaultValue: "rounded",
+    },
+    button_style: {
+      type: Sequelize.STRING(50),
+      allowNull: false,
+      defaultValue: "solid",
     },
     created_at: {
       type: Sequelize.DATE,

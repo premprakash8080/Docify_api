@@ -1,12 +1,13 @@
 const Sequelize = require("sequelize");
 const Note = require("../models/note");
-const NoteListView = require("../models/note_list_view");
-const NoteSummaryView = require("../models/note_summary_view");
 const Notebook = require("../models/notebook");
+const Stack = require("../models/stack");
 const Tag = require("../models/tag");
 const NoteTag = require("../models/noteTag");
 const File = require("../models/file");
 const Task = require("../models/task");
+const Color = require("../models/color");
+const User = require("../models/user");
 
 const NoteController = () => {
   /**
@@ -129,20 +130,130 @@ const NoteController = () => {
         whereClause.pinned = pinned === true || pinned === "true";
       }
 
-      // Use note_list_view for comprehensive note data with relationships
-      const notes = await NoteListView.findAll({
+      // Get notes with relationships and aggregated counts
+      const notes = await Note.findAll({
         where: whereClause,
+        include: [
+          {
+            model: Notebook,
+            as: "notebook",
+            required: false,
+            include: [
+              {
+                model: Stack,
+                as: "stack",
+                required: false,
+                include: [
+                  {
+                    model: Color,
+                    as: "color",
+                    attributes: ["id", "name", "hex_code"],
+                    required: false,
+                  },
+                ],
+                attributes: ["id", "name", "description", "color_id"],
+              },
+              {
+                model: Color,
+                as: "color",
+                attributes: ["id", "name", "hex_code"],
+                required: false,
+              },
+            ],
+            attributes: ["id", "name", "description", "color_id", "stack_id"],
+          },
+          {
+            model: User,
+            as: "user",
+            attributes: ["id", "email", "display_name"],
+            required: false,
+          },
+        ],
         order: [
           ["pinned", "DESC"],
           ["created_at", "DESC"],
         ],
       });
 
+      // Get aggregated counts for each note
+      const notesWithCounts = await Promise.all(
+        notes.map(async (note) => {
+          const noteData = note.toJSON();
+
+          // Get tag count
+          const tagCount = await NoteTag.count({
+            where: { note_id: note.id },
+          });
+
+          // Get file count
+          const fileCount = await File.count({
+            where: { note_id: note.id },
+          });
+
+          // Get task counts
+          const taskStats = await Task.findAll({
+            where: { note_id: note.id },
+            attributes: [
+              [Sequelize.fn("COUNT", Sequelize.col("id")), "task_count"],
+              [
+                Sequelize.fn(
+                  "SUM",
+                  Sequelize.literal("CASE WHEN completed = 1 THEN 1 ELSE 0 END")
+                ),
+                "completed_task_count",
+              ],
+            ],
+            raw: true,
+          });
+
+          const taskCount = taskStats[0]?.task_count || 0;
+          const completedTaskCount = taskStats[0]?.completed_task_count || 0;
+
+          // Build response similar to note_list_view
+          return {
+            id: noteData.id,
+            user_id: noteData.user_id,
+            notebook_id: noteData.notebook_id,
+            firebase_document_id: noteData.firebase_document_id,
+            title: noteData.title,
+            pinned: noteData.pinned,
+            archived: noteData.archived,
+            trashed: noteData.trashed,
+            version: noteData.version,
+            synced: noteData.synced,
+            created_at: noteData.created_at,
+            updated_at: noteData.updated_at,
+            last_modified: noteData.last_modified,
+            // Notebook information
+            notebook_name: noteData.notebook?.name || null,
+            notebook_description: noteData.notebook?.description || null,
+            notebook_color_id: noteData.notebook?.color_id || null,
+            notebook_color_hex: noteData.notebook?.color?.hex_code || null,
+            notebook_color_name: noteData.notebook?.color?.name || null,
+            // Stack information
+            stack_id: noteData.notebook?.stack?.id || null,
+            stack_name: noteData.notebook?.stack?.name || null,
+            stack_description: noteData.notebook?.stack?.description || null,
+            stack_color_id: noteData.notebook?.stack?.color_id || null,
+            stack_color_hex: noteData.notebook?.stack?.color?.hex_code || null,
+            stack_color_name: noteData.notebook?.stack?.color?.name || null,
+            // User information
+            user_email: noteData.user?.email || null,
+            user_display_name: noteData.user?.display_name || null,
+            // Aggregated counts
+            tag_count: tagCount,
+            file_count: fileCount,
+            task_count: parseInt(taskCount) || 0,
+            completed_task_count: parseInt(completedTaskCount) || 0,
+          };
+        })
+      );
+
       return res.status(200).json({
         success: true,
         data: {
-          notes,
-          count: notes.length,
+          notes: notesWithCounts,
+          count: notesWithCounts.length,
         },
       });
     } catch (error) {
@@ -179,12 +290,48 @@ const NoteController = () => {
         });
       }
 
-      // Use note_list_view for comprehensive note data
-      const note = await NoteListView.findOne({
+      // Get note with relationships and aggregated counts
+      const note = await Note.findOne({
         where: {
           id,
           user_id: req.user.id,
         },
+        include: [
+          {
+            model: Notebook,
+            as: "notebook",
+            required: false,
+            include: [
+              {
+                model: Stack,
+                as: "stack",
+                required: false,
+                include: [
+                  {
+                    model: Color,
+                    as: "color",
+                    attributes: ["id", "name", "hex_code"],
+                    required: false,
+                  },
+                ],
+                attributes: ["id", "name", "description", "color_id"],
+              },
+              {
+                model: Color,
+                as: "color",
+                attributes: ["id", "name", "hex_code"],
+                required: false,
+              },
+            ],
+            attributes: ["id", "name", "description", "color_id", "stack_id"],
+          },
+          {
+            model: User,
+            as: "user",
+            attributes: ["id", "email", "display_name"],
+            required: false,
+          },
+        ],
       });
 
       if (!note) {
@@ -194,10 +341,77 @@ const NoteController = () => {
         });
       }
 
+      const noteData = note.toJSON();
+
+      // Get aggregated counts
+      const tagCount = await NoteTag.count({
+        where: { note_id: note.id },
+      });
+
+      const fileCount = await File.count({
+        where: { note_id: note.id },
+      });
+
+      const taskStats = await Task.findAll({
+        where: { note_id: note.id },
+        attributes: [
+          [Sequelize.fn("COUNT", Sequelize.col("id")), "task_count"],
+          [
+            Sequelize.fn(
+              "SUM",
+              Sequelize.literal("CASE WHEN completed = 1 THEN 1 ELSE 0 END")
+            ),
+            "completed_task_count",
+          ],
+        ],
+        raw: true,
+      });
+
+      const taskCount = taskStats[0]?.task_count || 0;
+      const completedTaskCount = taskStats[0]?.completed_task_count || 0;
+
+      // Build response similar to note_list_view
+      const responseData = {
+        id: noteData.id,
+        user_id: noteData.user_id,
+        notebook_id: noteData.notebook_id,
+        firebase_document_id: noteData.firebase_document_id,
+        title: noteData.title,
+        pinned: noteData.pinned,
+        archived: noteData.archived,
+        trashed: noteData.trashed,
+        version: noteData.version,
+        synced: noteData.synced,
+        created_at: noteData.created_at,
+        updated_at: noteData.updated_at,
+        last_modified: noteData.last_modified,
+        // Notebook information
+        notebook_name: noteData.notebook?.name || null,
+        notebook_description: noteData.notebook?.description || null,
+        notebook_color_id: noteData.notebook?.color_id || null,
+        notebook_color_hex: noteData.notebook?.color?.hex_code || null,
+        notebook_color_name: noteData.notebook?.color?.name || null,
+        // Stack information
+        stack_id: noteData.notebook?.stack?.id || null,
+        stack_name: noteData.notebook?.stack?.name || null,
+        stack_description: noteData.notebook?.stack?.description || null,
+        stack_color_id: noteData.notebook?.stack?.color_id || null,
+        stack_color_hex: noteData.notebook?.stack?.color?.hex_code || null,
+        stack_color_name: noteData.notebook?.stack?.color?.name || null,
+        // User information
+        user_email: noteData.user?.email || null,
+        user_display_name: noteData.user?.display_name || null,
+        // Aggregated counts
+        tag_count: tagCount,
+        file_count: fileCount,
+        task_count: parseInt(taskCount) || 0,
+        completed_task_count: parseInt(completedTaskCount) || 0,
+      };
+
       return res.status(200).json({
         success: true,
         data: {
-          note,
+          note: responseData,
         },
       });
     } catch (error) {

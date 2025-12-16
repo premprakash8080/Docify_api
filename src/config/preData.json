@@ -3,10 +3,10 @@
     {
       "id": "1",
       "firebase_uid": "firebase_uid_user_001",
-      "auth_provider": "google",
-      "password_hash": null,
-      "email": "john.doe@example.com",
-      "display_name": "John Doe",
+      "auth_provider": "email",
+      "password_hash": "$2a$10$NO1qciiZg4vO5T/eIX.mQOHlWPvasXUgm0ENYxE52beWK2z2TfUGm",
+      "email": "dev@yopmail.com",
+      "display_name": "Dev User",
       "avatar_url": "https://example.com/avatars/john.jpg",
       "is_active": true
     },

@@ -1,4 +1,5 @@
 const router = require("express").Router();
+const jwtVerify = require("../config/jwtVerify");
 
 const {
   register,
@@ -16,39 +17,39 @@ const {
 } = require("../controllers/UserController");
 
 // ==============================
-// Auth
+// Auth (Public Routes)
 // ==============================
 router.post("/register", register);
 router.post("/login", login);
-router.post("/logout", logout);
-router.post("/refresh-token", refreshToken);
-
-// ==============================
-// Password Recovery
-// ==============================
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPassword);
 
 // ==============================
-// Profile
+// Auth (Protected Routes)
 // ==============================
-router.get("/me", getProfile);
-router.put("/me", updateProfile);
+router.post("/logout", jwtVerify, logout);
+router.post("/refresh-token", jwtVerify, refreshToken);
 
 // ==============================
-// Security
+// Profile (Protected)
 // ==============================
-router.put("/change-password", changePassword);
+router.get("/me", jwtVerify, getProfile);
+router.put("/me", jwtVerify, updateProfile);
 
 // ==============================
-// User Settings
+// Security (Protected)
 // ==============================
-router.get("/settings", getUserSettings);
-router.put("/settings", updateUserSettings);
+router.put("/change-password", jwtVerify, changePassword);
 
 // ==============================
-// Account
+// User Settings (Protected)
 // ==============================
-router.delete("/delete-account", deleteAccount);
+router.get("/settings", jwtVerify, getUserSettings);
+router.put("/settings", jwtVerify, updateUserSettings);
+
+// ==============================
+// Account (Protected)
+// ==============================
+router.delete("/delete-account", jwtVerify, deleteAccount);
 
 module.exports = router;

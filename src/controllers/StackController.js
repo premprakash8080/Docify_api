@@ -1,7 +1,7 @@
 const Sequelize = require("sequelize");
 const Stack = require("../models/stack");
-const StackSummaryView = require("../models/stack_summary_view");
 const Notebook = require("../models/notebook");
+const Note = require("../models/note");
 const Color = require("../models/color");
 
 const StackController = () => {
@@ -92,9 +92,9 @@ const StackController = () => {
   };
 
   /**
-   * @description Get all stacks for the authenticated user
+   * @description Get all stacks for the authenticated user with nested notebooks and notes
    * @param req.user - User from authentication middleware
-   * @returns list of stacks
+   * @returns Evernote-style nested structure: Stack → Notebooks → Notes (lightweight metadata)
    */
   const getAllStacks = async (req, res) => {
     try {
@@ -105,19 +105,121 @@ const StackController = () => {
         });
       }
 
-      // Use stack_summary_view for comprehensive stack data with aggregated counts
-      const stacks = await StackSummaryView.findAll({
+      // Fetch stacks with nested notebooks and notes using core models
+      const stacks = await Stack.findAll({
         where: {
           user_id: req.user.id,
         },
-        order: [["sort_order", "ASC"], ["created_at", "DESC"]],
+        include: [
+          {
+            model: Color,
+            as: "color",
+            attributes: ["id", "name", "hex_code"],
+            required: false,
+          },
+          {
+            model: Notebook,
+            as: "notebooks",
+            where: {
+              user_id: req.user.id,
+            },
+            required: false,
+            include: [
+              {
+                model: Color,
+                as: "color",
+                attributes: ["id", "name", "hex_code"],
+                required: false,
+              },
+              {
+                model: Note,
+                as: "notes",
+                attributes: [
+                  "id",
+                  "title",
+                  "pinned",
+                  "archived",
+                  "trashed",
+                  "updated_at",
+                  "last_modified",
+                  "created_at",
+                ],
+                where: {
+                  user_id: req.user.id,
+                  trashed: false, // Exclude trashed notes by default
+                },
+                required: false,
+                separate: true, // Use separate query for better performance
+                order: [
+                  ["pinned", "DESC"],
+                  ["last_modified", "DESC"],
+                  ["updated_at", "DESC"],
+                  ["created_at", "DESC"],
+                ],
+              },
+            ],
+            order: [
+              ["sort_order", "ASC"],
+              ["created_at", "DESC"],
+            ],
+          },
+        ],
+        order: [
+          ["sort_order", "ASC"],
+          ["created_at", "DESC"],
+        ],
+      });
+
+      // Transform the data to frontend-friendly structure
+      const transformedStacks = stacks.map((stack) => {
+        const stackData = stack.toJSON();
+        
+        return {
+          id: stackData.id,
+          name: stackData.name,
+          description: stackData.description,
+          sort_order: stackData.sort_order,
+          created_at: stackData.created_at,
+          updated_at: stackData.updated_at,
+          color: stackData.color
+            ? {
+                id: stackData.color.id,
+                name: stackData.color.name,
+                hex_code: stackData.color.hex_code,
+              }
+            : null,
+          notebooks: (stackData.notebooks || []).map((notebook) => ({
+            id: notebook.id,
+            name: notebook.name,
+            description: notebook.description,
+            sort_order: notebook.sort_order,
+            created_at: notebook.created_at,
+            updated_at: notebook.updated_at,
+            color: notebook.color
+              ? {
+                  id: notebook.color.id,
+                  name: notebook.color.name,
+                  hex_code: notebook.color.hex_code,
+                }
+              : null,
+            notes: (notebook.notes || []).map((note) => ({
+              id: note.id,
+              title: note.title,
+              pinned: note.pinned,
+              archived: note.archived,
+              updated_at: note.last_modified || note.updated_at || note.created_at,
+            })),
+            note_count: notebook.notes ? notebook.notes.length : 0,
+          })),
+          notebook_count: stackData.notebooks ? stackData.notebooks.length : 0,
+        };
       });
 
       return res.status(200).json({
         success: true,
         data: {
-          stacks,
-          count: stacks.length,
+          stacks: transformedStacks,
+          count: transformedStacks.length,
         },
       });
     } catch (error) {
@@ -154,12 +256,20 @@ const StackController = () => {
         });
       }
 
-      // Use stack_summary_view for comprehensive stack data
-      const stack = await StackSummaryView.findOne({
+      // Find stack with color information
+      const stack = await Stack.findOne({
         where: {
           id,
           user_id: req.user.id,
         },
+        include: [
+          {
+            model: Color,
+            as: "color",
+            attributes: ["id", "name", "hex_code"],
+            required: false,
+          },
+        ],
       });
 
       if (!stack) {
@@ -169,10 +279,47 @@ const StackController = () => {
         });
       }
 
+      // Get notebook count and total notes count
+      const notebookCount = await Notebook.count({
+        where: {
+          stack_id: id,
+          user_id: req.user.id,
+        },
+      });
+
+      // Count notes in notebooks that belong to this stack
+      const notebooksInStack = await Notebook.findAll({
+        where: {
+          stack_id: id,
+          user_id: req.user.id,
+        },
+        attributes: ["id"],
+      });
+
+      const notebookIds = notebooksInStack.map((nb) => nb.id);
+      const totalNotes = notebookIds.length > 0
+        ? await Note.count({
+            where: {
+              notebook_id: {
+                [Sequelize.Op.in]: notebookIds,
+              },
+              user_id: req.user.id,
+              trashed: false,
+            },
+          })
+        : 0;
+
+      const stackData = stack.toJSON();
+      const responseData = {
+        ...stackData,
+        notebook_count: notebookCount,
+        total_notes: totalNotes,
+      };
+
       return res.status(200).json({
         success: true,
         data: {
-          stack,
+          stack: responseData,
         },
       });
     } catch (error) {
@@ -250,19 +397,55 @@ const StackController = () => {
 
       await stack.save();
 
-      // Fetch updated stack from view for comprehensive data
-      const updatedStack = await StackSummaryView.findOne({
+      // Fetch updated stack with color information
+      const updatedStack = await Stack.findByPk(stack.id, {
+        include: [
+          {
+            model: Color,
+            as: "color",
+            attributes: ["id", "name", "hex_code"],
+            required: false,
+          },
+        ],
+      });
+
+      // Get notebook count and total notes count
+      const notebookCount = await Notebook.count({
         where: {
-          id: stack.id,
+          stack_id: stack.id,
           user_id: req.user.id,
         },
       });
+
+      const totalNotes = await Note.count({
+        include: [
+          {
+            model: Notebook,
+            as: "notebook",
+            where: {
+              stack_id: stack.id,
+              user_id: req.user.id,
+            },
+            required: true,
+          },
+        ],
+        where: {
+          trashed: false,
+        },
+      });
+
+      const stackData = updatedStack.toJSON();
+      const responseData = {
+        ...stackData,
+        notebook_count: notebookCount,
+        total_notes: totalNotes,
+      };
 
       return res.status(200).json({
         success: true,
         msg: "Stack updated successfully",
         data: {
-          stack: updatedStack,
+          stack: responseData,
         },
       });
     } catch (error) {

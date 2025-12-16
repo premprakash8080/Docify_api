@@ -3,6 +3,7 @@ const UserSetting = require("../models/userSetting");
 const { issueJWT } = require("../utils/issueJWT");
 const { admin } = require("../config/firebase");
 const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
 
 const UserController = () => {
   /**
@@ -32,30 +33,17 @@ const UserController = () => {
         });
       }
 
-      // Create user in Firebase Auth
-      let firebaseUser;
-      try {
-        firebaseUser = await admin.auth().createUser({
-          email,
-          password,
-          displayName: display_name || null,
-          emailVerified: false,
-        });
-      } catch (firebaseError) {
-        console.error("Firebase user creation error:", firebaseError);
-        return res.status(400).json({
-          success: false,
-          msg: "Failed to create Firebase user",
-          error: firebaseError.message,
-        });
-      }
-
       // Hash password for MySQL storage
       const password_hash = await bcrypt.hash(password, 10);
 
+      // Generate a unique identifier for email/password users
+      // Note: This is not a Firebase UID since Firebase Auth is not configured
+      // For email/password auth, we use local authentication with JWT
+      const localUid = `email_${crypto.randomUUID()}`;
+
       // Create user in MySQL
       const user = await User.create({
-        firebase_uid: firebaseUser.uid,
+        firebase_uid: localUid,
         email,
         display_name: display_name || null,
         auth_provider: "email",
@@ -141,14 +129,17 @@ const UserController = () => {
         });
       }
 
-      // Verify Firebase user exists
-      try {
-        await admin.auth().getUser(user.firebase_uid);
-      } catch (firebaseError) {
-        return res.status(401).json({
-          success: false,
-          msg: "Firebase user not found",
-        });
+      // For email/password users, skip Firebase Auth verification
+      // Firebase Auth is only used for Google OAuth users
+      if (user.auth_provider === "google") {
+        try {
+          await admin.auth().getUser(user.firebase_uid);
+        } catch (firebaseError) {
+          return res.status(401).json({
+            success: false,
+            msg: "Firebase user not found",
+          });
+        }
       }
 
       // Update last login
@@ -428,8 +419,8 @@ const UserController = () => {
 
       await user.save();
 
-      // Update Firebase Auth if display name changed
-      if (display_name !== undefined) {
+      // Update Firebase Auth if display name changed (only for Google users)
+      if (display_name !== undefined && user.auth_provider === "google") {
         try {
           await admin.auth().updateUser(user.firebase_uid, {
             displayName: display_name,
@@ -517,18 +508,21 @@ const UserController = () => {
         });
       }
 
-      // Update password in Firebase
-      try {
-        await admin.auth().updateUser(user.firebase_uid, {
-          password: newPassword,
-        });
-      } catch (firebaseError) {
-        console.error("Firebase password update error:", firebaseError);
-        return res.status(400).json({
-          success: false,
-          msg: "Failed to update password in Firebase",
-          error: firebaseError.message,
-        });
+      // Update password in Firebase (only for Google users)
+      // For email/password users, we only update MySQL
+      if (user.auth_provider === "google") {
+        try {
+          await admin.auth().updateUser(user.firebase_uid, {
+            password: newPassword,
+          });
+        } catch (firebaseError) {
+          console.error("Firebase password update error:", firebaseError);
+          return res.status(400).json({
+            success: false,
+            msg: "Failed to update password in Firebase",
+            error: firebaseError.message,
+          });
+        }
       }
 
       // Hash and update password in MySQL
@@ -563,15 +557,24 @@ const UserController = () => {
         });
       }
 
-      const settings = await UserSetting.findAll({
+      // Fetch or create a single settings row for the user
+      const [settings] = await UserSetting.findOrCreate({
         where: { user_id: req.user.id },
+        defaults: {
+          theme_layout: "default",
+          theme_color: "light",
+          corners: "rounded",
+          button_style: "solid",
+        },
       });
 
-      // Convert array to object
-      const settingsObject = {};
-      settings.forEach((setting) => {
-        settingsObject[setting.setting_key] = setting.setting_value;
-      });
+      // Convert settings row to object expected by frontend
+      const settingsObject = {
+        theme_layout: settings.theme_layout,
+        theme_color: settings.theme_color,
+        corners: settings.corners,
+        button_style: settings.button_style,
+      };
 
       return res.status(200).json({
         success: true,
@@ -592,7 +595,7 @@ const UserController = () => {
   /**
    * @description Update user settings
    * @param req.user - User from JWT/Firebase middleware
-   * @param req.body.settings - Object with setting_key: setting_value pairs
+   * @param req.body.settings - Object with settings fields
    * @returns updated settings
    */
   const updateUserSettings = async (req, res) => {
@@ -613,20 +616,44 @@ const UserController = () => {
         });
       }
 
-      // Update or create each setting
-      const updatedSettings = {};
-      for (const [key, value] of Object.entries(settings)) {
-        const [setting, created] = await UserSetting.findOrCreate({
-          where: { user_id: req.user.id, setting_key: key },
-          defaults: { setting_value: value },
-        });
+      // Allowed settings fields for the single settings row
+      const allowedKeys = [
+        "theme_layout",
+        "theme_color",
+        "corners",
+        "button_style",
+      ];
 
-        if (!created) {
-          await setting.update({ setting_value: value });
+      // Build update payload from allowed keys only
+      const updatePayload = {};
+      for (const key of allowedKeys) {
+        if (Object.prototype.hasOwnProperty.call(settings, key)) {
+          updatePayload[key] = settings[key];
         }
-
-        updatedSettings[key] = value;
       }
+
+      // Find or create the settings row for this user
+      const [userSettings] = await UserSetting.findOrCreate({
+        where: { user_id: req.user.id },
+        defaults: {
+          theme_layout: "default",
+          theme_color: "light",
+          corners: "rounded",
+          button_style: "solid",
+        },
+      });
+
+      // Apply updates if there are any allowed keys
+      if (Object.keys(updatePayload).length > 0) {
+        await userSettings.update(updatePayload);
+      }
+
+      const updatedSettings = {
+        theme_layout: userSettings.theme_layout,
+        theme_color: userSettings.theme_color,
+        corners: userSettings.corners,
+        button_style: userSettings.button_style,
+      };
 
       return res.status(200).json({
         success: true,
@@ -694,14 +721,17 @@ const UserController = () => {
       // Deactivate user in MySQL
       await user.update({ is_active: false });
 
-      // Optionally disable user in Firebase (don't delete to preserve data)
-      try {
-        await admin.auth().updateUser(user.firebase_uid, {
-          disabled: true,
-        });
-      } catch (firebaseError) {
-        console.error("Firebase disable error:", firebaseError);
-        // Continue even if Firebase update fails
+      // Optionally disable user in Firebase (only for Google users)
+      // For email/password users, we only update MySQL
+      if (user.auth_provider === "google") {
+        try {
+          await admin.auth().updateUser(user.firebase_uid, {
+            disabled: true,
+          });
+        } catch (firebaseError) {
+          console.error("Firebase disable error:", firebaseError);
+          // Continue even if Firebase update fails
+        }
       }
 
       return res.status(200).json({

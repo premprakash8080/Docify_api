@@ -1,13 +1,6 @@
 const Sequelize = require("sequelize");
 const database = require("../config/database");
 const { TABLE_NAME_USERS } = require("../config/table_names");
-
-// Related models for associations
-const Stack = require("./stack");
-const Notebook = require("./notebook");
-const Tag = require("./tag");
-const Note = require("./note");
-const File = require("./file");
 const UserSetting = require("./userSetting");
 
 const User = database.define(
@@ -69,19 +62,22 @@ const User = database.define(
   }
 );
 
-// Relationships:
-// User 1 - N Stack
-// User 1 - N Notebook
-// User 1 - N Tag
-// User 1 - N Note
-// User 1 - N File
-// User 1 - N UserSetting
-User.hasMany(Stack, { foreignKey: "user_id", as: "stacks" });
-User.hasMany(Notebook, { foreignKey: "user_id", as: "notebooks" });
-User.hasMany(Tag, { foreignKey: "user_id", as: "tags" });
-User.hasMany(Note, { foreignKey: "user_id", as: "notes" });
-User.hasMany(File, { foreignKey: "user_id", as: "files" });
-User.hasMany(UserSetting, { foreignKey: "user_id", as: "settings" });
+// Automatically create default user settings after a new user is created
+User.afterCreate(async (user, options) => {
+  try {
+    await UserSetting.findOrCreate({
+      where: { user_id: user.id },
+      defaults: {
+        theme_layout: "default",
+        theme_color: "light",
+        corners: "rounded",
+        button_style: "solid",
+      },
+    });
+  } catch (error) {
+    console.error("Error creating default user settings:", error);
+  }
+});
 
 module.exports = User;
 

@@ -7,9 +7,6 @@ const {
   TABLE_NAME_COLORS,
 } = require("../config/table_names");
 
-const Note = require("./note");
-const Color = require("./color");
-
 const Notebook = database.define(
   TABLE_NAME_NOTEBOOKS,
   {
@@ -70,12 +67,6 @@ const Notebook = database.define(
     underscored: true,
   }
 );
-
-// Relationships:
-// Notebook 1 - N Note
-// Notebook N - 1 Color
-Notebook.hasMany(Note, { foreignKey: "notebook_id", as: "notes" });
-Notebook.belongsTo(Color, { foreignKey: "color_id", as: "color" });
 
 module.exports = Notebook;
 

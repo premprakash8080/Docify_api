@@ -66,9 +66,6 @@ const File = database.define(
   }
 );
 
-// Relationships:
-// File N - 1 Note (optional)
-
 module.exports = File;
 
 

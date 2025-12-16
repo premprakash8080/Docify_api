@@ -55,8 +55,6 @@ const Task = database.define(
   }
 );
 
-// Relationships:
-// Task N - 1 Note
 module.exports = Task;
 
 

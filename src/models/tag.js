@@ -6,8 +6,6 @@ const {
   TABLE_NAME_COLORS,
 } = require("../config/table_names");
 
-const Color = require("./color");
-
 const Tag = database.define(
   TABLE_NAME_TAGS,
   {
@@ -50,11 +48,6 @@ const Tag = database.define(
     underscored: true,
   }
 );
-
-// Relationships:
-// Tag N - M Note (via NoteTag, association defined on Note model)
-// Tag N - 1 Color
-Tag.belongsTo(Color, { foreignKey: "color_id", as: "color" });
 
 module.exports = Tag;
 

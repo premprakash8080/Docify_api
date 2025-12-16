@@ -1,4 +1,5 @@
 const router = require("express").Router();
+const jwtVerify = require("../config/jwtVerify");
 
 const {
   createNote,
@@ -29,6 +30,9 @@ const {
   // Tasks
   getNoteTasks
 } = require("../controllers/NoteController");
+
+// Apply JWT middleware to all routes
+router.use(jwtVerify);
 
 // ==============================
 // Notes CRUD (metadata only)

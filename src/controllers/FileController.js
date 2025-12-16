@@ -151,7 +151,7 @@ const FileController = () => {
   /**
    * @description Get all files for the authenticated user
    * @param req.user - User from authentication middleware
-   * @param req.body.note_id - Optional filter by note_id
+   * @param req.query.note_id - Optional filter by note_id (query parameter)
    * @returns list of files
    */
   const getAllFiles = async (req, res) => {
@@ -163,7 +163,7 @@ const FileController = () => {
         });
       }
 
-      const { note_id } = req.body || {};
+      const { note_id } = req.query || {};
       const whereClause = { user_id: req.user.id };
 
       if (note_id) {
@@ -195,7 +195,7 @@ const FileController = () => {
   /**
    * @description Get a single file by ID
    * @param req.user - User from authentication middleware
-   * @param req.body.id - File ID
+   * @param req.params.id - File ID (URL parameter)
    * @returns file details
    */
   const getFileById = async (req, res) => {
@@ -207,7 +207,7 @@ const FileController = () => {
         });
       }
 
-      const { id } = req.body;
+      const { id } = req.params;
 
       if (!id) {
         return res.status(400).json({
@@ -250,7 +250,7 @@ const FileController = () => {
   /**
    * @description Update file metadata
    * @param req.user - User from authentication middleware
-   * @param req.body.id - File ID
+   * @param req.params.id - File ID (URL parameter)
    * @param req.body.filename - New filename (optional)
    * @param req.body.description - New description (optional)
    * @returns updated file
@@ -264,7 +264,7 @@ const FileController = () => {
         });
       }
 
-      const { id } = req.body;
+      const { id } = req.params;
 
       if (!id) {
         return res.status(400).json({
@@ -315,7 +315,7 @@ const FileController = () => {
   /**
    * @description Delete a file
    * @param req.user - User from authentication middleware
-   * @param req.body.id - File ID
+   * @param req.params.id - File ID (URL parameter)
    * @returns success message
    */
   const deleteFile = async (req, res) => {
@@ -327,7 +327,7 @@ const FileController = () => {
         });
       }
 
-      const { id } = req.body;
+      const { id } = req.params;
 
       if (!id) {
         return res.status(400).json({
@@ -373,8 +373,8 @@ const FileController = () => {
   /**
    * @description Attach file to a note
    * @param req.user - User from authentication middleware
-   * @param req.body.id - File ID
-   * @param req.body.noteId - Note ID
+   * @param req.params.id - File ID (URL parameter)
+   * @param req.params.noteId - Note ID (URL parameter)
    * @returns updated file
    */
   const attachFileToNote = async (req, res) => {
@@ -386,7 +386,7 @@ const FileController = () => {
         });
       }
 
-      const { id, noteId } = req.body;
+      const { id, noteId } = req.params;
 
       if (!id || !noteId) {
         return res.status(400).json({
@@ -450,7 +450,7 @@ const FileController = () => {
   /**
    * @description Detach file from note
    * @param req.user - User from authentication middleware
-   * @param req.body.id - File ID
+   * @param req.params.id - File ID (URL parameter)
    * @returns updated file
    */
   const detachFileFromNote = async (req, res) => {
@@ -462,7 +462,7 @@ const FileController = () => {
         });
       }
 
-      const { id } = req.body;
+      const { id } = req.params;
 
       if (!id) {
         return res.status(400).json({
@@ -518,7 +518,7 @@ const FileController = () => {
   /**
    * @description Get all files attached to a note
    * @param req.user - User from authentication middleware
-   * @param req.body.noteId - Note ID
+   * @param req.params.noteId - Note ID (URL parameter)
    * @returns list of files
    */
   const getNoteFiles = async (req, res) => {
@@ -530,7 +530,7 @@ const FileController = () => {
         });
       }
 
-      const { noteId } = req.body;
+      const { noteId } = req.params;
 
       if (!noteId) {
         return res.status(400).json({

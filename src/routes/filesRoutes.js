@@ -1,4 +1,5 @@
 const router = require("express").Router();
+const jwtVerify = require("../config/jwtVerify");
 
 const {
   uploadFile,
@@ -10,6 +11,9 @@ const {
   detachFileFromNote,
   getNoteFiles
 } = require("../controllers/FileController");
+
+// Apply JWT middleware to all routes
+router.use(jwtVerify);
 
 // ==============================
 // Upload / Create
