@@ -1,45 +1,42 @@
+// config/firebase.js
+
 const admin = require("firebase-admin");
 
-// You can either:
-// 1) Use GOOGLE_APPLICATION_CREDENTIALS pointing to a service account JSON file, or
-// 2) Provide service account values via env (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY)
-
-let app;
-
 if (!admin.apps.length) {
-  if (
-    process.env.FIREBASE_PROJECT_ID &&
-    process.env.FIREBASE_CLIENT_EMAIL &&
-    process.env.FIREBASE_PRIVATE_KEY
-  ) {
-    // Initialize with explicit service account from environment variables
-    const credential = admin.credential.cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      // Replace escaped newlines in private key
-      privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+  try {
+    let credential;
+
+    if (
+      process.env.FIREBASE_PROJECT_ID &&
+      process.env.FIREBASE_CLIENT_EMAIL &&
+      process.env.FIREBASE_PRIVATE_KEY
+    ) {
+      credential = admin.credential.cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+      });
+    } else {
+      credential = admin.credential.applicationDefault();
+    }
+
+    admin.initializeApp({
+      credential,
+      // No databaseURL needed for Firestore
     });
 
-    app = admin.initializeApp({
-      credential,
-      databaseURL: process.env.FIREBASE_DATABASE_URL,
-    });
-  } else {
-    // Fallback: rely on GOOGLE_APPLICATION_CREDENTIALS or default credentials
-    app = admin.initializeApp({
-      databaseURL: process.env.FIREBASE_DATABASE_URL,
-    });
+    console.info("Firebase Admin (Firestore) initialized successfully");
+  } catch (error) {
+    console.error("Firebase initialization error:", error);
+    throw new Error("Failed to initialize Firebase Admin SDK");
   }
-} else {
-  app = admin.app();
 }
 
-const db = admin.database();
+// Export Firestore instance
+const db = admin.firestore();
 
 module.exports = {
   admin,
-  app,
-  db,
+  app: admin.app(),
+  db, // This is now Firestore, not Realtime Database
 };
-
-

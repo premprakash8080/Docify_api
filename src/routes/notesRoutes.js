@@ -28,7 +28,9 @@ const {
   getNoteFiles,
 
   // Tasks
-  getNoteTasks
+  getNoteTasks,
+  getNoteContent,
+  saveNoteContent,
 } = require("../controllers/NoteController");
 
 // Apply JWT middleware to all routes
@@ -76,5 +78,12 @@ router.delete("/:id/tags/:tagId", removeTagFromNote);
 // ==============================
 router.get("/:id/files", getNoteFiles);
 router.get("/:id/tasks", getNoteTasks);
+
+// ==============================
+// Note Content
+// ==============================
+router.get("/:id/content", getNoteContent);
+router.put("/:id/content", saveNoteContent);
+
 
 module.exports = router;

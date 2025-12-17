@@ -286,28 +286,10 @@
   "user_settings": [
     {
       "user_id": "1",
-      "setting_key": "theme",
-      "setting_value": "dark"
-    },
-    {
-      "user_id": "1",
-      "setting_key": "default_notebook_id",
-      "setting_value": "660e8400-e29b-41d4-a716-446655440001"
-    },
-    {
-      "user_id": "1",
-      "setting_key": "sidebar_collapsed",
-      "setting_value": "false"
-    },
-    {
-      "user_id": "2",
-      "setting_key": "theme",
-      "setting_value": "light"
-    },
-    {
-      "user_id": "2",
-      "setting_key": "auto_save",
-      "setting_value": "true"
+      "theme_layout": "vex-layout-apollo",
+      "theme_color": "vex-style-default",
+      "corners": "0.5rem",
+      "button_style": "0.5rem"
     }
   ],
   "colors": [
@@ -343,6 +325,7 @@
       "user_id": "1",
       "name": "Default Template",
       "description": "Default template for notes",
+      "image_url": "https://example.com/images/default-template.jpg",
       "content": "Default template for notes"
     },
     {
@@ -350,6 +333,7 @@
       "user_id": "1",
       "name": "Default Template",
       "description": "Default template for notes",
+      "image_url": "https://example.com/images/default-template.jpg",
       "content": "Default template for notes"
     }
   ]

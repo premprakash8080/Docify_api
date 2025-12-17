@@ -9,6 +9,7 @@ const File = require("../models/file");
 const Task = require("../models/task");
 const Color = require("../models/color");
 const User = require("../models/user");
+const { resolveNotebookId, getFirebaseDocId, getFormattedNoteResponse } = require("../utils/noteHelpers");
 
 const NoteController = () => {
   /**
@@ -21,12 +22,6 @@ const NoteController = () => {
    */
   const createNote = async (req, res) => {
     try {
-      if (!req.user) {
-        return res.status(401).json({
-          success: false,
-          msg: "User not authenticated",
-        });
-      }
 
       const { title, notebook_id, firebase_document_id } = req.body;
 
@@ -245,6 +240,56 @@ const NoteController = () => {
     }
   };
 
+
+const refactorCreateNote = async (req, res) => {
+  try {
+    const { title, notebook_id, firebase_document_id } = req.body;
+    const userId = req.user.id;
+
+    if (!title || title.trim() === "") {
+      return res.status(400).json({
+        success: false,
+        msg: "Note title is required",
+      });
+    }
+
+    // Resolve notebook ID (validate provided or fallback to default)
+    const validatedNotebookId = await resolveNotebookId(userId, notebook_id);
+
+    // Get or generate Firebase doc ID
+    const initialFirebaseDocId = getFirebaseDocId(firebase_document_id);
+
+    // Create note in SQL
+    const note = await Note.create({
+      user_id: userId,
+      notebook_id: validatedNotebookId,
+      firebase_document_id: initialFirebaseDocId,
+      title: title.trim(),
+      pinned: false,
+      archived: false,
+      trashed: false,
+      version: 1,
+      synced: false,
+    });
+
+    // Get formatted response with relations and aggregates
+    const responseData = await getFormattedNoteResponse(note.id, userId);
+
+    return res.status(201).json({
+      success: true,
+      msg: "Note created successfully",
+      data: { note: responseData },
+    });
+  } catch (error) {
+    console.error("Create note error:", error);
+    return res.status(500).json({
+      success: false,
+      msg: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
   /**
    * @description Get all notes for the authenticated user
    * @param req.user - User from authentication middleware
@@ -256,12 +301,6 @@ const NoteController = () => {
    */
   const getAllNotes = async (req, res) => {
     try {
-      if (!req.user) {
-        return res.status(401).json({
-          success: false,
-          msg: "User not authenticated",
-        });
-      }
 
       // Accept filters from both query params (standard) and body (for compatibility)
       const queryFilters = req.query || {};
@@ -1566,6 +1605,41 @@ const NoteController = () => {
     }
   };
 
+  const getNoteContent = async (req, res) => {
+
+    try {
+      return res.status(200).json({
+        success: true,
+        data: []
+      });
+    } catch (error) {
+      console.error("Get note content error:", error);
+      return res.status(500).json({
+        success: false,
+        msg: "Internal server error",
+        error: error.message,
+      });
+    }
+  }
+
+  const saveNoteContent = async (req, res) => {
+
+    try {
+      return res.status(200).json({
+        success: true,
+        data: []
+      });
+    } catch (error) {
+      console.error("Save note content error:", error);
+      return res.status(500).json({
+        success: false,
+        msg: "Internal server error",
+        error: error.message,
+      });
+    }
+
+  }
+
   return {
     createNote,
     getAllNotes,
@@ -1584,6 +1658,8 @@ const NoteController = () => {
     removeTagFromNote,
     getNoteFiles,
     getNoteTasks,
+    getNoteContent,
+    saveNoteContent,
   };
 };
 

@@ -32,6 +32,11 @@ const Template = database.define(
       allowNull: true,
     },
 
+    image_url: {
+      type: Sequelize.STRING(255),
+      allowNull: true,
+    },
+
     content: {
       type: Sequelize.TEXT("long"),
       allowNull: false,

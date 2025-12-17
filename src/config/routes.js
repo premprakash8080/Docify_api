@@ -11,6 +11,7 @@ exports.set_routes = (app) => {
   const files = require("../routes/filesRoutes");
   const tasks = require("../routes/tasksRoutes");
   const calendar = require("../routes/calendarRoutes");
+  const templates = require("../routes/templateRoutes");
 
   app.use("/api/users", users);
   app.use("/api/notes", notes);
@@ -20,4 +21,5 @@ exports.set_routes = (app) => {
   app.use("/api/files", files);
   app.use("/api/tasks", tasks);
   app.use("/api/calendar", calendar);
+  app.use("/api/templates", templates);
 };
