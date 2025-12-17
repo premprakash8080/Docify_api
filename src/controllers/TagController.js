@@ -98,13 +98,6 @@ const TagController = () => {
    */
   const getAllTags = async (req, res) => {
     try {
-      if (!req.user) {
-        return res.status(401).json({
-          success: false,
-          msg: "User not authenticated",
-        });
-      }
-
       const tags = await Tag.findAll({
         where: {
           user_id: req.user.id,
@@ -116,13 +109,31 @@ const TagController = () => {
             attributes: ["id", "name", "hex_code"],
           },
         ],
+        attributes: ["id", "name", "color_id","created_at"],
         order: [["created_at", "DESC"]],
+
+      });
+
+      // get count of tags used in notes
+      const tagCounts = await NoteTag.findAll({
+        where: {
+          tag_id: {
+            [Sequelize.Op.in]: tags.map((tag) => tag.id),
+          },
+        },
+      });
+
+      const tagsWithCount = tags.map((tag) => {
+        const plainTag = tag.toJSON();
+        plainTag.noteCount =
+          tagCounts.filter((t) => t.tag_id === tag.id).length;
+        return plainTag;
       });
 
       return res.status(200).json({
         success: true,
         data: {
-          tags,
+          tags: tagsWithCount,
           count: tags.length,
         },
       });
