@@ -28,6 +28,37 @@ const Task = database.define(
       allowNull: false,
       comment: "Task label/description",
     },
+    description: {
+      type: Sequelize.TEXT,
+      allowNull: true,
+      comment: "Task detailed description",
+    },
+    due_date: {
+      type: Sequelize.DATE,
+      allowNull: true,
+      comment: "Task due date",
+    },
+    reminder: {
+      type: Sequelize.STRING(255),
+      allowNull: true,
+      comment: "Task reminder setting",
+    },
+    assigned_to: {
+      type: Sequelize.STRING(255),
+      allowNull: true,
+      comment: "Task assignee",
+    },
+    priority: {
+      type: Sequelize.STRING(50),
+      allowNull: true,
+      comment: "Task priority (low, medium, high)",
+    },
+    flagged: {
+      type: Sequelize.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      comment: "Task flagged status",
+    },
     completed: {
       type: Sequelize.BOOLEAN,
       allowNull: false,

@@ -8,7 +8,8 @@ const {
   toggleTaskComplete,
   reorderTasks,
   deleteTask,
-  getNoteTasks
+  getNoteTasks,
+  getAllTasks
 } = require("../controllers/TaskController");
 
 // Apply JWT middleware to all routes
@@ -17,20 +18,21 @@ router.use(jwtVerify);
 // ==============================
 // Task CRUD
 // ==============================
-router.post("/", createTask);               // Create task (under a note)
-router.get("/:id", getTaskById);            // Get single task
-router.put("/:id", updateTask);             // Update label / order
-router.put("/:id/toggle", toggleTaskComplete);
-router.delete("/:id", deleteTask);
+router.post("/", createTask);                    // Create task (under a note)
+router.get("/getTaskById", getTaskById);         // Get single task
+router.put("/updateTask", updateTask);           // Update label / order
+router.put("/toggleTaskComplete", toggleTaskComplete);
+router.delete("/deleteTask", deleteTask);
+router.get("/getAllTasks", getAllTasks);
 
 // ==============================
 // Task Ordering
 // ==============================
-router.put("/reorder", reorderTasks);        // Update sort_order in bulk
+router.put("/reorder", reorderTasks);            // Update sort_order in bulk
 
 // ==============================
 // Note ↔ Tasks
 // ==============================
-router.get("/note/:noteId", getNoteTasks);   // All tasks for a note
+router.get("/getNoteTasks", getNoteTasks);       // All tasks for a note
 
 module.exports = router;

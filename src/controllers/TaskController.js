@@ -21,7 +21,18 @@ const TaskController = () => {
         });
       }
 
-      const { note_id, label, sort_order, completed } = req.body;
+      const { 
+        note_id, 
+        label, 
+        description,
+        due_date,
+        reminder,
+        assigned_to,
+        priority,
+        flagged,
+        sort_order, 
+        completed 
+      } = req.body;
 
       if (!note_id || !label) {
         return res.status(400).json({
@@ -60,6 +71,12 @@ const TaskController = () => {
       const task = await Task.create({
         note_id,
         label: label.trim(),
+        description: description ? description.trim() : null,
+        due_date: due_date || null,
+        reminder: reminder || null,
+        assigned_to: assigned_to ? assigned_to.trim() : null,
+        priority: priority || null,
+        flagged: flagged === true || flagged === "true",
         sort_order: finalSortOrder,
         completed: completed === true || completed === "true",
       });
@@ -84,7 +101,7 @@ const TaskController = () => {
   /**
    * @description Get a single task by ID
    * @param req.user - User from authentication middleware
-   * @param req.body.id - Task ID
+   * @param req.query.id - Task ID (from query)
    * @returns task details
    */
   const getTaskById = async (req, res) => {
@@ -96,7 +113,7 @@ const TaskController = () => {
         });
       }
 
-      const { id } = req.body;
+      const { id } = req.query;
 
       if (!id) {
         return res.status(400).json({
@@ -149,10 +166,16 @@ const TaskController = () => {
   };
 
   /**
-   * @description Update task (label and/or sort_order)
+   * @description Update task (label, description, due_date, reminder, assigned_to, priority, flagged, sort_order)
    * @param req.user - User from authentication middleware
-   * @param req.body.id - Task ID
+   * @param req.body.id - Task ID (from body)
    * @param req.body.label - New label (optional)
+   * @param req.body.description - New description (optional)
+   * @param req.body.due_date - New due date (optional)
+   * @param req.body.reminder - New reminder (optional)
+   * @param req.body.assigned_to - New assignee (optional)
+   * @param req.body.priority - New priority (optional)
+   * @param req.body.flagged - New flagged status (optional)
    * @param req.body.sort_order - New sort order (optional)
    * @returns updated task
    */
@@ -165,7 +188,17 @@ const TaskController = () => {
         });
       }
 
-      const { id, label, sort_order } = req.body;
+      const { 
+        id, 
+        label, 
+        description,
+        due_date,
+        reminder,
+        assigned_to,
+        priority,
+        flagged,
+        sort_order 
+      } = req.body;
 
       if (!id) {
         return res.status(400).json({
@@ -205,6 +238,24 @@ const TaskController = () => {
       if (label !== undefined) {
         task.label = label.trim();
       }
+      if (description !== undefined) {
+        task.description = description ? description.trim() : null;
+      }
+      if (due_date !== undefined) {
+        task.due_date = due_date || null;
+      }
+      if (reminder !== undefined) {
+        task.reminder = reminder || null;
+      }
+      if (assigned_to !== undefined) {
+        task.assigned_to = assigned_to ? assigned_to.trim() : null;
+      }
+      if (priority !== undefined) {
+        task.priority = priority || null;
+      }
+      if (flagged !== undefined) {
+        task.flagged = flagged === true || flagged === "true";
+      }
       if (sort_order !== undefined) {
         task.sort_order = sort_order;
       }
@@ -231,7 +282,7 @@ const TaskController = () => {
   /**
    * @description Toggle task completion status
    * @param req.user - User from authentication middleware
-   * @param req.body.id - Task ID
+   * @param req.body.id - Task ID (from body)
    * @returns updated task
    */
   const toggleTaskComplete = async (req, res) => {
@@ -303,7 +354,7 @@ const TaskController = () => {
   /**
    * @description Delete a task
    * @param req.user - User from authentication middleware
-   * @param req.body.id - Task ID
+   * @param req.body.id - Task ID (from body)
    * @returns success message
    */
   const deleteTask = async (req, res) => {
@@ -461,7 +512,7 @@ const TaskController = () => {
   /**
    * @description Get all tasks for a note
    * @param req.user - User from authentication middleware
-   * @param req.body.noteId - Note ID
+   * @param req.query.noteId - Note ID (from query)
    * @returns list of tasks
    */
   const getNoteTasks = async (req, res) => {
@@ -473,7 +524,7 @@ const TaskController = () => {
         });
       }
 
-      const { noteId } = req.body;
+      const { noteId } = req.query;
 
       if (!noteId) {
         return res.status(400).json({
@@ -526,6 +577,68 @@ const TaskController = () => {
     }
   };
 
+  /**
+   * @description Get all tasks for the current user
+   * @param req.user - User from authentication middleware
+   * @returns list of tasks
+   */
+  const getAllTasks = async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          msg: "User not authenticated",
+        });
+      }
+
+      // Get all tasks for the current user by joining with notes
+      // First get all user's notes
+      const userNotes = await Note.findAll({
+        where: {
+          user_id: req.user.id,
+        },
+        attributes: ["id"],
+      });
+
+      const noteIds = userNotes.map(note => note.id);
+
+      if (noteIds.length === 0) {
+        return res.status(200).json({
+          success: true,
+          data: {
+            tasks: [],
+            count: 0,
+          },
+        });
+      }
+
+      // Get all tasks for user's notes
+      const tasks = await Task.findAll({
+        where: {
+          note_id: {
+            [Sequelize.Op.in]: noteIds,
+          },
+        },
+        order: [["sort_order", "ASC"], ["created_at", "ASC"]],
+      });
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          tasks,
+          count: tasks.length,
+        },
+      });
+    } catch (error) {
+      console.error("Get all tasks error:", error);
+      return res.status(500).json({
+        success: false,
+        msg: "Internal server error",
+        error: error.message,
+      });
+    }
+  };
+
   return {
     createTask,
     getTaskById,
@@ -534,6 +647,7 @@ const TaskController = () => {
     deleteTask,
     reorderTasks,
     getNoteTasks,
+    getAllTasks,
   };
 };
 
