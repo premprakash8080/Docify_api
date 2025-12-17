@@ -11,8 +11,9 @@ const Tag = database.define(
   {
     id: {
       type: Sequelize.INTEGER,
-      allowNull: false,
       primaryKey: true,
+      autoIncrement: true,
+      allowNull: false,
     },
     user_id: {
       type: Sequelize.INTEGER,

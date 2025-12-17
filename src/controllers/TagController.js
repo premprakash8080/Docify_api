@@ -14,12 +14,6 @@ const TagController = () => {
    */
   const createTag = async (req, res) => {
     try {
-      if (!req.user) {
-        return res.status(401).json({
-          success: false,
-          msg: "User not authenticated",
-        });
-      }
 
       const { name, color_id } = req.body;
 
@@ -162,7 +156,7 @@ const TagController = () => {
         });
       }
 
-      const { id } = req.body;
+      const { id } = req.params;
 
       if (!id) {
         return res.status(400).json({
@@ -225,7 +219,7 @@ const TagController = () => {
         });
       }
 
-      const { id } = req.body;
+      const { id } = req.params;
 
       if (!id) {
         return res.status(400).json({
@@ -329,7 +323,7 @@ const TagController = () => {
         });
       }
 
-      const { id } = req.body;
+      const { id } = req.params;
 
       if (!id) {
         return res.status(400).json({
@@ -392,7 +386,7 @@ const TagController = () => {
         });
       }
 
-      const { id: tagId, noteId } = req.body;
+      const { id: tagId, noteId } = req.params;
 
       if (!tagId || !noteId) {
         return res.status(400).json({
@@ -482,7 +476,7 @@ const TagController = () => {
         });
       }
 
-      const { id: tagId, noteId } = req.body;
+      const { id: tagId, noteId } = req.params;
 
       if (!tagId || !noteId) {
         return res.status(400).json({
@@ -551,6 +545,25 @@ const TagController = () => {
       });
     }
   };
+  const getColors = async (req, res) => {
+    try {
+      const colors = await Color.findAll();
+      console.log(colors);
+      console.log("colors");
+      return res.status(200).json({
+        success: true,
+        data: { colors },
+      });
+    }
+    catch (error) {
+      console.error("Get colors error:", error);
+      return res.status(500).json({
+        success: false,
+        msg: "Internal server error",
+        error: error.message,
+      });
+    }
+  };
 
   return {
     createTag,
@@ -560,6 +573,7 @@ const TagController = () => {
     deleteTag,
     attachTagToNote,
     detachTagFromNote,
+    getColors,
   };
 };
 

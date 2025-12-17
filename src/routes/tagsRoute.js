@@ -8,7 +8,8 @@ const {
   updateTag,
   deleteTag,
   attachTagToNote,
-  detachTagFromNote
+  detachTagFromNote,
+  getColors
 } = require("../controllers/TagController");
 
 // ==============================
@@ -16,6 +17,7 @@ const {
 // ==============================
 router.post("/", jwtVerify, createTag);          // Create tag
 router.get("/", jwtVerify, getAllTags);           // List user tags
+router.get("/colors", jwtVerify, getColors);       // List colors
 router.get("/:id", jwtVerify, getTagById);        // Single tag
 router.put("/:id", jwtVerify, updateTag);         // Update tag
 router.delete("/:id", jwtVerify, deleteTag);      // Delete tag
