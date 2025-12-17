@@ -102,7 +102,7 @@ const TemplateController = () => {
    */
   const getTemplateById = async (req, res) => {
     try {
-      const { templateId } = req.body;
+      const { templateId } = req.query;
       const userId = req.user.id;
 
       const template = await Template.findOne({
