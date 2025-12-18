@@ -49,7 +49,7 @@ const TemplateController = () => {
   const getSystemTemplates = async (req, res) => {
     try {
       const templates = await Template.findAll({
-        where: { user_id: null }, // or { is_system: true } depending on your model
+        where: { is_system: true },
         order: [["name", "ASC"]],
         attributes: ["id", "name", "description", "image_url", "content", "user_id", "is_system", "createdAt", "updatedAt"]
       });
@@ -77,7 +77,7 @@ const TemplateController = () => {
       const userId = req.user.id;
 
       const templates = await Template.findAll({
-        where: { user_id: userId },
+        where: { user_id: userId, is_system: false },
         order: [["name", "ASC"]],
         attributes: ["id", "name", "description", "image_url", "content", "user_id", "is_system", "createdAt", "updatedAt"]
       });
