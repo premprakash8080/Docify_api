@@ -191,6 +191,7 @@ const StackController = () => {
           notebooks: (stackData.notebooks || []).map((notebook) => ({
             id: notebook.id,
             name: notebook.name,
+            stack_id: notebook.stack_id,
             description: notebook.description,
             sort_order: notebook.sort_order,
             created_at: notebook.created_at,

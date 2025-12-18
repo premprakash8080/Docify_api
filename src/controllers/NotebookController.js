@@ -676,22 +676,15 @@ const NotebookController = () => {
   /**
    * @description Move notebook to a stack
    * @param req.user - User from authentication middleware
-   * @param req.body.id - Notebook ID
-   * @param req.body.stackId - Stack ID
+   * @param req.query.id - Notebook ID
+   * @param req.query.stack_id - Stack ID
    * @returns updated notebook
    */
   const moveNotebookToStack = async (req, res) => {
     try {
-      if (!req.user) {
-        return res.status(401).json({
-          success: false,
-          msg: "User not authenticated",
-        });
-      }
+      const { id, stack_id } = req.body;
 
-      const { id, stackId } = req.body;
-
-      if (!id || !stackId) {
+      if (!id || !stack_id) {
         return res.status(400).json({
           success: false,
           msg: "Notebook ID and Stack ID are required",
@@ -705,6 +698,7 @@ const NotebookController = () => {
           user_id: req.user.id,
         },
       });
+      console.log(notebook);
 
       if (!notebook) {
         return res.status(404).json({
@@ -716,10 +710,11 @@ const NotebookController = () => {
       // Verify stack belongs to user
       const stack = await Stack.findOne({
         where: {
-          id: stackId,
+          id: stack_id,
           user_id: req.user.id,
         },
       });
+      console.log(stack);
 
       if (!stack) {
         return res.status(404).json({
@@ -731,7 +726,7 @@ const NotebookController = () => {
       // Get max sort_order in the target stack
       const maxNotebook = await Notebook.findOne({
         where: {
-          stack_id: stackId,
+          stack_id: stack_id,
           user_id: req.user.id,
         },
         order: [["sort_order", "DESC"]],
@@ -742,7 +737,7 @@ const NotebookController = () => {
 
       // Update notebook
       await notebook.update({
-        stack_id: stackId,
+        stack_id: stack_id,
         sort_order: newSortOrder,
       });
 
@@ -760,7 +755,7 @@ const NotebookController = () => {
       updatedNotebook = updatedNotebook.toJSON();
 
       // Fetch stack information
-      const targetStack = await Stack.findByPk(stackId, {
+      const targetStack = await Stack.findByPk(stack_id, {
         include: [
           {
             model: Color,

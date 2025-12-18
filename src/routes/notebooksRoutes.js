@@ -33,8 +33,8 @@ router.put("/reorder", reorderNotebooks);     // Update sort_order
 // ==============================
 // Stack ↔ Notebook
 // ==============================
-router.put("/:id/stack/:stackId", moveNotebookToStack);
-router.delete("/:id/stack", removeNotebookFromStack);
+router.put("/stack/updateNotebookStack", moveNotebookToStack);
+router.delete("/stack/removeNotebookFromStack", removeNotebookFromStack);
 
 // ==============================
 // Notebook ↔ Notes
