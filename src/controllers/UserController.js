@@ -4,6 +4,7 @@ const { issueJWT } = require("../utils/issueJWT");
 const { admin } = require("../config/firebase");
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
+const { deleteImage } = require("../handlers/uploadImage");
 
 const UserController = () => {
   /**
@@ -182,6 +183,7 @@ const UserController = () => {
     try {
       // In a stateless JWT system, logout is handled client-side
       // Optionally, you can track logout events or invalidate tokens
+      
       return res.status(200).json({
         success: true,
         msg: "Logout successful",
@@ -390,8 +392,10 @@ const UserController = () => {
   /**
    * @description Update user profile
    * @param req.user - User from JWT/Firebase middleware
+   * @param req.file - Uploaded avatar image file (from multer middleware, optional)
    * @param req.body.display_name - New display name (optional)
-   * @param req.body.avatar_url - New avatar URL (optional)
+   * @param req.body.avatar_url - New avatar URL (optional, used if no file uploaded)
+   * @param req.body.image_updated - Set to "false" to skip image upload (optional)
    * @returns updated user profile
    */
   const updateProfile = async (req, res) => {
@@ -403,7 +407,7 @@ const UserController = () => {
         });
       }
 
-      const { display_name, avatar_url } = req.body;
+      const { display_name, avatar_url, image_updated } = req.body;
       const user = await User.findByPk(req.user.id);
 
       if (!user) {
@@ -413,9 +417,26 @@ const UserController = () => {
         });
       }
 
+      // Handle avatar image upload
+      if (req.file && req.file.path) {
+        // New image was uploaded via multer
+        // Delete old avatar from Cloudinary if it exists
+        if (user.avatar_url && user.avatar_url.includes('cloudinary.com')) {
+          try {
+            await deleteImage(user.avatar_url);
+          } catch (deleteError) {
+            console.error("Error deleting old avatar:", deleteError);
+            // Continue even if deletion fails
+          }
+        }
+        user.avatar_url = req.file.path; // Cloudinary URL
+      } else if (avatar_url !== undefined && image_updated !== "false") {
+        // Avatar URL provided directly in body (not via file upload)
+        user.avatar_url = avatar_url;
+      }
+
       // Update allowed fields
       if (display_name !== undefined) user.display_name = display_name;
-      if (avatar_url !== undefined) user.avatar_url = avatar_url;
 
       await user.save();
 

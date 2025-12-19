@@ -7,8 +7,9 @@ const User = require("../models/user");
 const NoteTag = require("../models/noteTag");
 const File = require("../models/file");
 const Task = require("../models/task");
+const { Op } = require("sequelize");
 
-const CalendarController = () => {
+const calendarController = () => {
   /**
    * @description Get calendar events by date (supports day/week/month views)
    * @param req.user - User from authentication middleware
@@ -594,12 +595,104 @@ const CalendarController = () => {
     }
   };
 
+  const getCalendarItems = async (req, res) => {
+    try {
+      const userId = req.user.id;
+
+      // Fetch tasks that have a due_date
+      const tasks = await Task.findAll({
+        attributes: ['id', 'label', 'due_date', 'completed', 'priority', 'flagged'],
+        where: {
+          due_date: { [Op.ne]: null }, // only tasks with due date
+        },
+        include: [
+          {
+            model: Note,
+            as: 'note', // assuming you have association Task.belongsTo(Note)
+            where: { user_id: userId },
+            attributes: ['id', 'title'],
+            required: true,
+          },
+        ],
+        order: [['due_date', 'ASC']],
+      });
+
+      // Fetch pinned notes (treat as all-day calendar items)
+      const pinnedNotes = await Note.findAll({
+        where: {
+          user_id: userId,
+          pinned: true,
+          trashed: false, // exclude trashed
+        },
+        attributes: ['id', 'title', 'created_at', 'updated_at'],
+        order: [['updated_at', 'DESC']],
+      });
+
+      // Map to unified calendar format
+      const items = [];
+
+      // Map tasks
+      tasks.forEach(task => {
+        const isOverdue = task.due_date && task.due_date < new Date() && !task.completed;
+
+        items.push({
+          id: `task_${task.id}`,
+          type: 'task',
+          title: task.label,
+          start: task.due_date ? task.due_date.toISOString().split('T')[0] : null, // YYYY-MM-DD for allDay
+          end: null,
+          allDay: true,
+          completed: task.completed,
+          color: task.completed
+            ? '#9e9e9e'     // grey if completed
+            : isOverdue
+            ? '#f44336'     // red if overdue
+            : task.priority === 'high'
+            ? '#ff5722'     // orange-red for high priority
+            : '#ffc107',    // default yellow for tasks
+          sourceId: task.id,
+        });
+      });
+
+      // Map pinned notes
+      pinnedNotes.forEach(note => {
+        // Use updated_at or created_at as display date (or you can add a dedicated calendar_date later)
+        const displayDate = note.updated_at || note.created_at;
+
+        items.push({
+          id: `note_${note.id}`,
+          type: 'note',
+          title: note.title || 'Untitled Note',
+          start: displayDate.toISOString().split('T')[0],
+          end: null,
+          allDay: true,
+          color: '#4caf50', // green for pinned notes
+          sourceId: note.id,
+        });
+      });
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          items,
+        },
+      });
+    } catch (error) {
+      console.error('Get calendar items error:', error);
+      return res.status(500).json({
+        success: false,
+        msg: 'Internal server error',
+      });
+    }
+  };
+
   return {
     getCalendarEventsByDate,
     getCalendarEventById,
     getCalendarEventsByRange,
+    getCalendarItems,
   };
 };
 
-module.exports = CalendarController();
 
+module.exports = calendarController;

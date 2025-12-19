@@ -1,5 +1,6 @@
 const router = require("express").Router();
 const jwtVerify = require("../config/jwtVerify");
+const { uploadImage } = require("../handlers/uploadImage");
 
 const {
   register,
@@ -33,8 +34,8 @@ router.post("/refresh-token", jwtVerify, refreshToken);
 // ==============================
 // Profile (Protected)
 // ==============================
-router.get("/me", jwtVerify, getProfile);
-router.put("/me", jwtVerify, updateProfile);
+router.get("/profile", jwtVerify, getProfile);
+router.put("/profile", jwtVerify, uploadImage.single("avatar"), updateProfile);
 
 // ==============================
 // Security (Protected)
