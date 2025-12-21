@@ -26,8 +26,8 @@ router.delete("/:id", jwtVerify, deleteTag);      // Delete tag
 // ==============================
 // Tag ↔ Note Relation
 // ==============================
-router.post("/:id/notes/:noteId", jwtVerify, attachTagToNote);
-router.delete("/:id/notes/:noteId", jwtVerify, detachTagFromNote);
+// router.post("/:id/notes/:noteId", jwtVerify, attachTagToNote);
+// router.delete("/:id/notes/:noteId", jwtVerify, detachTagFromNote);
 
 // ==============================
 // Get all user tags

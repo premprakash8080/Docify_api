@@ -963,6 +963,90 @@ const NotebookController = () => {
     }
   };
 
+  /**
+   * @description Get all notebooks grouped by stacks
+   * @param req.user - User from authentication middleware
+   * @returns notebooks grouped by stacks and ungrouped notebooks
+   */
+  const getNotebooksWithStacks = async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          msg: "User not authenticated",
+        });
+      }
+
+      // Get all notebooks for the user with stack information
+      const notebooks = await Notebook.findAll({
+        where: {
+          user_id: req.user.id,
+        },
+        include: [
+          {
+            model: Stack,
+            as: "stack",
+            required: false,
+            attributes: ["id", "name", "description"],
+          },
+        ],
+        order: [["sort_order", "ASC"], ["created_at", "DESC"]],
+      });
+
+      // Separate notebooks with stacks and without stacks
+      const notebooksWithStacks = [];
+      const notebooksWithoutStacks = [];
+
+      notebooks.forEach((notebook) => {
+        const notebookData = notebook.toJSON();
+        const notebookInfo = {
+          id: notebookData.id,
+          name: notebookData.name,
+        };
+
+        if (notebookData.stack_id && notebookData.stack) {
+          notebooksWithStacks.push({
+            stack_id: notebookData.stack_id,
+            stack_name: notebookData.stack.name,
+            notebook: notebookInfo,
+          });
+        } else {
+          notebooksWithoutStacks.push(notebookInfo);
+        }
+      });
+
+      // Group notebooks by stack
+      const stackMap = new Map();
+
+      notebooksWithStacks.forEach((item) => {
+        const stackId = item.stack_id;
+        if (!stackMap.has(stackId)) {
+          stackMap.set(stackId, {
+            id: stackId,
+            name: item.stack_name,
+            notebooks: [],
+          });
+        }
+        stackMap.get(stackId).notebooks.push(item.notebook);
+      });
+
+      // Convert map to array
+      const stacks = Array.from(stackMap.values());
+
+      return res.status(200).json({
+        stacks: stacks,
+        notebooks: notebooksWithoutStacks,
+      });
+    } catch (error) {
+      console.error("Get notebooks with stacks error:", error);
+      return res.status(500).json({
+        success: false,
+        msg: "Internal server error",
+        error: error.message,
+      });
+    }
+  };
+
   return {
     createNotebook,
     getAllNotebooks,
@@ -973,6 +1057,7 @@ const NotebookController = () => {
     moveNotebookToStack,
     removeNotebookFromStack,
     getNotebookNotes,
+    getNotebooksWithStacks,
   };
 };
 

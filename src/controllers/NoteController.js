@@ -301,10 +301,12 @@ const refactorCreateNote = async (req, res) => {
   /**
    * @description Get all notes for the authenticated user
    * @param req.user - User from authentication middleware
-   * @param req.body.notebook_id - Optional filter by notebook_id
-   * @param req.body.archived - Optional filter by archived status
-   * @param req.body.trashed - Optional filter by trashed status
-   * @param req.body.pinned - Optional filter by pinned status
+   * @param req.query.notebook_id - Optional filter by notebook_id
+   * @param req.query.tag_id - Optional filter by tag_id
+   * @param req.query.stack_id - Optional filter by stack_id
+   * @param req.query.archived - Optional filter by archived status
+   * @param req.query.trashed - Optional filter by trashed status
+   * @param req.query.pinned - Optional filter by pinned status
    * @returns list of notes
    */
   const getAllNotes = async (req, res) => {
@@ -314,6 +316,8 @@ const refactorCreateNote = async (req, res) => {
       const queryFilters = req.query || {};
       const bodyFilters = req.body || {};
       const notebook_id = queryFilters.notebook_id || bodyFilters.notebook_id;
+      const tag_id = queryFilters.tag_id || bodyFilters.tag_id;
+      const stack_id = queryFilters.stack_id || bodyFilters.stack_id;
       const archived = queryFilters.archived !== undefined ? queryFilters.archived : bodyFilters.archived;
       const trashed = queryFilters.trashed !== undefined ? queryFilters.trashed : bodyFilters.trashed;
       const pinned = queryFilters.pinned !== undefined ? queryFilters.pinned : bodyFilters.pinned;
@@ -336,45 +340,139 @@ const refactorCreateNote = async (req, res) => {
         whereClause.pinned = pinned === true || pinned === "true" || pinned === true;
       }
 
+      // Handle stack-based filtering
+      // If stack_id is provided, get all notebooks belonging to that stack
+      if (stack_id) {
+        // Verify stack belongs to user
+        const stack = await Stack.findOne({
+          where: {
+            id: stack_id,
+            user_id: req.user.id,
+          },
+        });
+
+        if (!stack) {
+          return res.status(404).json({
+            success: false,
+            msg: "Stack not found",
+          });
+        }
+
+        // Get all notebooks belonging to this stack
+        const notebooks = await Notebook.findAll({
+          where: {
+            stack_id: stack_id,
+            user_id: req.user.id,
+          },
+          attributes: ["id"],
+        });
+
+        const notebookIds = notebooks.map((nb) => nb.id);
+
+        if (notebookIds.length === 0) {
+          // Stack has no notebooks, return empty result
+          return res.status(200).json({
+            success: true,
+            data: {
+              notes: [],
+              count: 0,
+            },
+          });
+        }
+
+        // Filter notes by notebook IDs
+        if (whereClause.notebook_id) {
+          // If notebook_id is also specified, check if it's in the stack
+          if (!notebookIds.includes(whereClause.notebook_id)) {
+            return res.status(200).json({
+              success: true,
+              data: {
+                notes: [],
+                count: 0,
+              },
+            });
+          }
+        } else {
+          // Filter by all notebooks in the stack
+          whereClause.notebook_id = { [Sequelize.Op.in]: notebookIds };
+        }
+      }
+
+      // Build include array
+      const includes = [
+        {
+          model: Notebook,
+          as: "notebook",
+          required: false,
+          include: [
+            {
+              model: Stack,
+              as: "stack",
+              required: false,
+              include: [
+                {
+                  model: Color,
+                  as: "color",
+                  attributes: ["id", "name", "hex_code"],
+                  required: false,
+                },
+              ],
+              attributes: ["id", "name", "description", "color_id"],
+            },
+            {
+              model: Color,
+              as: "color",
+              attributes: ["id", "name", "hex_code"],
+              required: false,
+            },
+          ],
+          attributes: ["id", "name", "description", "color_id", "stack_id"],
+        },
+        {
+          model: User,
+          as: "user",
+          attributes: ["id", "email", "display_name"],
+          required: false,
+        },
+      ];
+
+      // Handle tag-based filtering
+      // If tag_id is provided, include Tag with where clause to filter at database level
+      if (tag_id) {
+        // Verify tag belongs to user
+        const tag = await Tag.findOne({
+          where: {
+            id: tag_id,
+            user_id: req.user.id,
+          },
+        });
+
+        if (!tag) {
+          return res.status(404).json({
+            success: false,
+            msg: "Tag not found",
+          });
+        }
+
+        // Include Tag model with where clause to filter notes by tag_id
+        // This will use a JOIN through NoteTag table at database level
+        includes.push({
+          model: Tag,
+          as: "tags",
+          where: { id: tag_id },
+          required: true, // INNER JOIN - only notes with this tag
+          attributes: ["id", "name", "color_id"],
+          through: {
+            attributes: [],
+          },
+        });
+      }
+
       // Get notes with relationships and aggregated counts
       const notes = await Note.findAll({
         where: whereClause,
-        include: [
-          {
-            model: Notebook,
-            as: "notebook",
-            required: false,
-            include: [
-              {
-                model: Stack,
-                as: "stack",
-                required: false,
-                include: [
-                  {
-                    model: Color,
-                    as: "color",
-                    attributes: ["id", "name", "hex_code"],
-                    required: false,
-                  },
-                ],
-                attributes: ["id", "name", "description", "color_id"],
-              },
-              {
-                model: Color,
-                as: "color",
-                attributes: ["id", "name", "hex_code"],
-                required: false,
-              },
-            ],
-            attributes: ["id", "name", "description", "color_id", "stack_id"],
-          },
-          {
-            model: User,
-            as: "user",
-            attributes: ["id", "email", "display_name"],
-            required: false,
-          },
-        ],
+        include: includes,
+        distinct: true, // Important for JOINs to avoid duplicate rows
         order: [
           ["pinned", "DESC"],
           ["created_at", "DESC"],
@@ -1331,7 +1429,7 @@ const refactorCreateNote = async (req, res) => {
       }
 
       // Get IDs from route params (POST /notes/:id/tags/:tagId)
-      const { id: noteId, tagId } = req.params;
+      const { noteId, tagId } = req.body;
 
       if (!noteId || !tagId) {
         return res.status(400).json({
@@ -1408,7 +1506,7 @@ const refactorCreateNote = async (req, res) => {
   /**
    * @description Remove a tag from a note
    * @param req.user - User from authentication middleware
-   * @param req.body.id - Note ID
+   * @param req.body.noteId - Note ID
    * @param req.body.tagId - Tag ID
    * @returns success message
    */
@@ -1422,7 +1520,7 @@ const refactorCreateNote = async (req, res) => {
       }
 
       // Get IDs from route params (DELETE /notes/:id/tags/:tagId)
-      const { id: noteId, tagId } = req.params;
+      const { noteId, tagId } = req.body;
 
       if (!noteId || !tagId) {
         return res.status(400).json({
@@ -1647,7 +1745,7 @@ const refactorCreateNote = async (req, res) => {
       }
 
       // Get ID from route params (GET /notes/:id/content)
-      const { id } = req.params;
+      const { id } = req.query;
 
       if (!id) {
         return res.status(400).json({
@@ -1662,7 +1760,7 @@ const refactorCreateNote = async (req, res) => {
           id,
           user_id: req.user.id,
         },
-        attributes: ["id", "firebase_document_id"],
+        attributes: ["id", "title", "notebook_id", "trashed", "created_at", "updated_at", "firebase_document_id"],
         include: [
           {
             model: Tag,
@@ -1703,32 +1801,41 @@ const refactorCreateNote = async (req, res) => {
       const firebaseDocId = note.firebase_document_id;
       const content = await getFirebaseNoteContent(firebaseDocId);
 
-      // Format tags array
-      const tags = (noteData.tags || []).map((tag) => ({
-        id: tag.id,
-        name: tag.name,
-        color_id: tag.color_id,
-      }));
+      // Format tags as array of tag names (empty array if no tags)
+      const tags = (noteData.tags || []).map((tag) => tag.name);
 
-      // Get stack name from notebook
+      // Get stack name and stack_id from notebook
       const stackName = noteData.notebook?.stack?.name || null;
+      const stackId = noteData.notebook?.stack?.id || noteData.notebook?.stack_id || null;
 
-      if (content === null) {
-        return res.status(200).json({
-          success: true,
-          data: {
-            content: null,
-            tags: tags,
-            stack_name: stackName,
-          },
-          msg: "Note content not found in Firestore",
-        });
-      }
+      // Helper function to convert Date to Firebase timestamp format
+      const toFirebaseTimestamp = (date) => {
+        if (!date) return null;
+        const timestamp = date instanceof Date ? date : new Date(date);
+        const seconds = Math.floor(timestamp.getTime() / 1000);
+        const nanoseconds = (timestamp.getTime() % 1000) * 1000000;
+        return {
+          _seconds: seconds,
+          _nanoseconds: nanoseconds,
+        };
+      };
+
+      // Build note object with content
+      const noteObject = {
+        id: noteData.id,
+        title: noteData.title || "Untitled",
+        content: content?.content.content || "<p></p>",
+        notebook_id: noteData.notebook_id || null,
+        stack_id: stackId,
+        is_trashed: noteData.trashed || false,
+        created_at: toFirebaseTimestamp(noteData.created_at),
+        updated_at: toFirebaseTimestamp(noteData.updated_at),
+      };
 
       return res.status(200).json({
         success: true,
         data: {
-          content: content,
+          note: noteObject,
           tags: tags,
           stack_name: stackName,
         },
@@ -1996,6 +2103,86 @@ const refactorCreateNote = async (req, res) => {
     }
   };
 
+  /**
+   * @description Get note location (notebook and stack)
+   * @param req.user - User from authentication middleware
+   * @param req.params.noteId - Note ID
+   * @returns note location information
+   */
+  const getNoteWithStack = async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          msg: "User not authenticated",
+        });
+      }
+
+      // Get ID from route params (GET /notes/:noteId/with-stack)
+      const { noteId } = req.params;
+
+      if (!noteId) {
+        return res.status(400).json({
+          success: false,
+          msg: "Note ID is required",
+        });
+      }
+
+      // Get note with notebook and stack relationships
+      const note = await Note.findOne({
+        where: {
+          id: noteId,
+          user_id: req.user.id,
+        },
+        include: [
+          {
+            model: Notebook,
+            as: "notebook",
+            required: false,
+            include: [
+              {
+                model: Stack,
+                as: "stack",
+                required: false,
+                attributes: ["id", "name"],
+              },
+            ],
+            attributes: ["id", "name", "stack_id"],
+          },
+        ],
+        attributes: ["id", "title", "notebook_id"],
+      });
+
+      if (!note) {
+        return res.status(404).json({
+          success: false,
+          msg: "Note not found",
+        });
+      }
+
+      const noteData = note.toJSON();
+
+      // Build response
+      const responseData = {
+        note: {
+          id: noteData.id,
+          title: noteData.title,
+          notebookId: noteData.notebook_id || null,
+          stackId: noteData.notebook?.stack?.id || noteData.notebook?.stack_id || null,
+        },
+      };
+
+      return res.status(200).json(responseData);
+    } catch (error) {
+      console.error("Get note with stack error:", error);
+      return res.status(500).json({
+        success: false,
+        msg: "Internal server error",
+        error: error.message,
+      });
+    }
+  };
+
   return {
     createNote,
     getAllNotes,
@@ -2019,6 +2206,7 @@ const refactorCreateNote = async (req, res) => {
     uploadNoteImage,
     getNoteImages,
     deleteNoteImage,
+    getNoteWithStack,
   };
 };
 

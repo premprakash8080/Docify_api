@@ -33,6 +33,8 @@ const {
   uploadNoteImage,
   getNoteImages,
   deleteNoteImage,
+  getNoteWithStack,
+  getNoteContent,
 } = require("../controllers/NoteController");
 
 // Apply JWT middleware to all routes
@@ -42,7 +44,7 @@ router.use(jwtVerify);
 // Notes CRUD (metadata only)
 // ==============================
 router.post("/", createNote);
-router.get("/getAllNotes", getAllNotes);
+router.get("/getAllNotes", getAllNotes); // notes?tag_id={tagId}&stack_id={stackId}&notebook_id={notebookId}
 router.post("/getNoteById", getNoteById);
 router.put("/:id", updateNoteMeta);
 router.delete("/:id", deleteNote);
@@ -50,6 +52,7 @@ router.delete("/:id", deleteNote);
 // ==============================
 // Notebook ↔ Note
 // ==============================
+router.get("/:noteId/with-stack", getNoteWithStack); // Get note location (notebook and stack)
 router.put("/:id/notebook/:notebookId", moveNoteToNotebook);
 
 // ==============================
@@ -72,8 +75,8 @@ router.put("/:id/synced", markNoteSynced);
 // ==============================
 // Tags ↔ Notes
 // ==============================
-router.post("/:id/tags/:tagId", addTagToNote);
-router.delete("/:id/tags/:tagId", removeTagFromNote);
+router.post("/addTagToNote", addTagToNote);
+router.delete("/removeTagFromNote", removeTagFromNote);
 
 // ==============================
 // Files & Tasks
@@ -85,6 +88,7 @@ router.get("/:id/tasks", getNoteTasks);
 // Note Content
 // ==============================
 router.put("/:id/content", saveNoteContent);
+router.get("/getNoteContent", getNoteContent);
 
 // ==============================
 // Note Images

@@ -10,7 +10,8 @@ const {
   reorderNotebooks,
   moveNotebookToStack,
   removeNotebookFromStack,
-  getNotebookNotes
+  getNotebookNotes,
+  getNotebooksWithStacks
 } = require("../controllers/NotebookController");
 
 // Apply JWT middleware to all routes
@@ -19,7 +20,8 @@ router.use(jwtVerify);
 // ==============================
 // Notebooks CRUD
 // ==============================
-router.post("/", createNotebook);            // Create notebook
+router.post("/createNotebook", createNotebook);            // Create notebook
+router.get("/with-stacks", getNotebooksWithStacks); // Get notebooks grouped by stacks
 router.post("/list", getAllNotebooks);        // List user notebooks (POST for body params)
 router.post("/:id", getNotebookById);         // Single notebook (POST for body params)
 router.put("/:id", updateNotebook);           // Update notebook
