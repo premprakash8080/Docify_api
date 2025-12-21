@@ -1958,6 +1958,25 @@ const refactorCreateNote = async (req, res) => {
           msg: "User not authenticated",
         });
       }
+      const { note_id } = req.body;
+      if (!note_id) {
+        return res.status(400).json({
+          success: false,
+          msg: "Note ID is required",
+        });
+      }
+      const note = await Note.findOne({
+        where: {
+          id: note_id,
+          user_id: req.user.id,
+        },
+      });
+      if (!note) {
+        return res.status(404).json({
+          success: false,
+          msg: "Note not found",
+        });
+      }
 
       if (!req.file) {
         return res.status(400).json({
@@ -1969,7 +1988,7 @@ const refactorCreateNote = async (req, res) => {
       const file = await File.create({
         id: uuidv4(),
         user_id: req.user.id,
-        note_id: null,
+        note_id: note.id,
         firebase_storage_path: req.file.path,
         filename: req.file.originalname,
         mime_type: req.file.mimetype,
