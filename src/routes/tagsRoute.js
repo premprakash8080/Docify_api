@@ -9,7 +9,8 @@ const {
   deleteTag,
   attachTagToNote,
   detachTagFromNote,
-  getColors
+  getColors,
+  getUserTags
 } = require("../controllers/TagController");
 
 // ==============================
@@ -27,5 +28,10 @@ router.delete("/:id", jwtVerify, deleteTag);      // Delete tag
 // ==============================
 router.post("/:id/notes/:noteId", jwtVerify, attachTagToNote);
 router.delete("/:id/notes/:noteId", jwtVerify, detachTagFromNote);
+
+// ==============================
+// Get all user tags
+// ==============================
+router.post("/getUserTags", jwtVerify, getUserTags);
 
 module.exports = router;

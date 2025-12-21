@@ -10,6 +10,14 @@ const Task = require("../models/task");
 const Color = require("../models/color");
 const User = require("../models/user");
 const { resolveNotebookId, getFirebaseDocId, getFormattedNoteResponse } = require("../utils/noteHelpers");
+const { getNoteContent: getFirebaseNoteContent, saveNoteContent: saveFirebaseNoteContent, initializeNoteContent } = require("../utils/noteFirestoreHelper");
+const cloudinary = require("cloudinary").v2;
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 const NoteController = () => {
   /**
@@ -479,8 +487,8 @@ const refactorCreateNote = async (req, res) => {
         });
       }
 
-      // Get ID from route params (GET /notes/:id)
-      const { id } = req.params;
+      // Get ID from req.body (POST /notes/getNoteById)
+      const { id } = req.body;
 
       if (!id) {
         return res.status(400).json({
@@ -489,13 +497,22 @@ const refactorCreateNote = async (req, res) => {
         });
       }
 
-      // Get note with relationships and aggregated counts
+      // Get note with relationships, tags, and aggregated counts
       const note = await Note.findOne({
         where: {
           id,
           user_id: req.user.id,
         },
         include: [
+          {
+            model: Tag,
+            as: "tags",
+            required: false,
+            attributes: ["id", "name", "color_id"],
+            through: {
+              attributes: [],
+            },
+          },
           {
             model: Notebook,
             as: "notebook",
@@ -542,6 +559,10 @@ const refactorCreateNote = async (req, res) => {
 
       const noteData = note.toJSON();
 
+      // Get content from Firebase Firestore
+      const firebaseDocId = note.firebase_document_id;
+      const content = await getFirebaseNoteContent(firebaseDocId);
+
       // Get aggregated counts
       const tagCount = await NoteTag.count({
         where: { note_id: note.id },
@@ -569,13 +590,17 @@ const refactorCreateNote = async (req, res) => {
       const taskCount = taskStats[0]?.task_count || 0;
       const completedTaskCount = taskStats[0]?.completed_task_count || 0;
 
-      // Build response similar to note_list_view
+      // Format tags as array of tag names (strings)
+      const tags = (noteData.tags || []).map((tag) => tag.name);
+
+      // Build response
       const responseData = {
         id: noteData.id,
         user_id: noteData.user_id,
         notebook_id: noteData.notebook_id,
         firebase_document_id: noteData.firebase_document_id,
         title: noteData.title,
+        content: content || null,
         pinned: noteData.pinned,
         archived: noteData.archived,
         trashed: noteData.trashed,
@@ -602,6 +627,7 @@ const refactorCreateNote = async (req, res) => {
         user_display_name: noteData.user?.display_name || null,
         // Aggregated counts
         tag_count: tagCount,
+        tags: tags,
         file_count: fileCount,
         task_count: parseInt(taskCount) || 0,
         completed_task_count: parseInt(completedTaskCount) || 0,
@@ -1605,12 +1631,107 @@ const refactorCreateNote = async (req, res) => {
     }
   };
 
+  /**
+   * @description Get note content from Firebase Firestore
+   * @param req.user - User from authentication middleware
+   * @param req.params.id - Note ID (UUID)
+   * @returns note content from Firestore
+   */
   const getNoteContent = async (req, res) => {
-
     try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          msg: "User not authenticated",
+        });
+      }
+
+      // Get ID from route params (GET /notes/:id/content)
+      const { id } = req.params;
+
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          msg: "Note ID is required",
+        });
+      }
+
+      // Verify note exists and belongs to user, include tags and stack
+      const note = await Note.findOne({
+        where: {
+          id,
+          user_id: req.user.id,
+        },
+        attributes: ["id", "firebase_document_id"],
+        include: [
+          {
+            model: Tag,
+            as: "tags",
+            required: false,
+            attributes: ["id", "name", "color_id"],
+            through: {
+              attributes: [],
+            },
+          },
+          {
+            model: Notebook,
+            as: "notebook",
+            required: false,
+            include: [
+              {
+                model: Stack,
+                as: "stack",
+                required: false,
+                attributes: ["id", "name", "description"],
+              },
+            ],
+            attributes: ["id", "name", "stack_id"],
+          },
+        ],
+      });
+
+      if (!note) {
+        return res.status(404).json({
+          success: false,
+          msg: "Note not found",
+        });
+      }
+
+      const noteData = note.toJSON();
+
+      // Get content from Firebase Firestore
+      const firebaseDocId = note.firebase_document_id;
+      const content = await getFirebaseNoteContent(firebaseDocId);
+
+      // Format tags array
+      const tags = (noteData.tags || []).map((tag) => ({
+        id: tag.id,
+        name: tag.name,
+        color_id: tag.color_id,
+      }));
+
+      // Get stack name from notebook
+      const stackName = noteData.notebook?.stack?.name || null;
+
+      if (content === null) {
+        return res.status(200).json({
+          success: true,
+          data: {
+            content: null,
+            tags: tags,
+            stack_name: stackName,
+          },
+          msg: "Note content not found in Firestore",
+        });
+      }
+
       return res.status(200).json({
         success: true,
-        data: []
+        data: {
+          content: content,
+          tags: tags,
+          stack_name: stackName,
+        },
       });
     } catch (error) {
       console.error("Get note content error:", error);
@@ -1620,14 +1741,97 @@ const refactorCreateNote = async (req, res) => {
         error: error.message,
       });
     }
-  }
+  };
 
+  /**
+   * @description Save/update note content in Firebase Firestore
+   * @param req.user - User from authentication middleware
+   * @param req.params.id - Note ID (UUID)
+   * @param req.body - Content data to save (e.g., { content: "...", title: "..." })
+   * @returns success response
+   */
   const saveNoteContent = async (req, res) => {
-
     try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          msg: "User not authenticated",
+        });
+      }
+
+      // Get ID from route params (PUT /notes/:id/content)
+      const { id } = req.params;
+      const contentData = req.body;
+
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          msg: "Note ID is required",
+        });
+      }
+
+      if (!contentData || typeof contentData !== "object") {
+        return res.status(400).json({
+          success: false,
+          msg: "Content data is required",
+        });
+      }
+
+      // Verify note exists and belongs to user
+      const note = await Note.findOne({
+        where: {
+          id,
+          user_id: req.user.id,
+        },
+        attributes: ["id", "firebase_document_id", "version"],
+      });
+
+      if (!note) {
+        return res.status(404).json({
+          success: false,
+          msg: "Note not found",
+        });
+      }
+
+      const firebaseDocId = note.firebase_document_id;
+
+      // Check if content exists in Firestore, initialize if not
+      const existingContent = await getFirebaseNoteContent(firebaseDocId);
+      if (existingContent === null) {
+        // Initialize note content in Firestore if it doesn't exist
+        await initializeNoteContent(firebaseDocId, {
+          user_id: req.user.id,
+          notebook_id: null, // Can be set if needed
+          ...contentData,
+        });
+      } else {
+        // Update existing content
+        await saveFirebaseNoteContent(firebaseDocId, contentData);
+      }
+
+      // Update the note's version and synced status
+      const currentVersion = note.version || 1;
+      await Note.update(
+        {
+          synced: true,
+          version: currentVersion + 1,
+          last_modified: new Date(),
+        },
+        {
+          where: {
+            id: note.id,
+            user_id: req.user.id,
+          },
+        }
+      );
+
       return res.status(200).json({
         success: true,
-        data: []
+        msg: "Note content saved successfully",
+        data: {
+          note_id: note.id,
+          firebase_document_id: firebaseDocId,
+        },
       });
     } catch (error) {
       console.error("Save note content error:", error);
@@ -1637,8 +1841,160 @@ const refactorCreateNote = async (req, res) => {
         error: error.message,
       });
     }
+  };
 
-  }
+  const uploadNoteImage = async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          msg: "User not authenticated",
+        });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          msg: "No image provided",
+        });
+      }
+
+      const file = await File.create({
+        id: uuidv4(),
+        user_id: req.user.id,
+        note_id: null,
+        firebase_storage_path: req.file.path,
+        filename: req.file.originalname,
+        mime_type: req.file.mimetype,
+        size: req.file.size,
+        description: req.file.public_id,
+      });
+
+      return res.status(201).json({
+        success: true,
+        msg: "Image uploaded successfully",
+        data: {
+          id: file.id,
+          secure_url: req.file.path,
+          public_id: req.file.public_id,
+        },
+      });
+    } catch (error) {
+      console.error("Upload image error:", error);
+      return res.status(500).json({
+        success: false,
+        msg: "Internal server error",
+        error: error.message,
+      });
+    }
+  };
+
+  const getNoteImages = async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          msg: "User not authenticated",
+        });
+      }
+
+      const images = await File.findAll({
+        where: {
+          user_id: req.user.id,
+          mime_type: {
+            [Sequelize.Op.like]: "image/%",
+          },
+        },
+        order: [["created_at", "DESC"]],
+      });
+
+      const imageData = images.map((img) => ({
+        id: img.id,
+        secure_url: img.firebase_storage_path,
+        public_id: img.description,
+        filename: img.filename,
+        mime_type: img.mime_type,
+        size: img.size,
+        created_at: img.created_at,
+      }));
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          images: imageData,
+          count: imageData.length,
+        },
+      });
+    } catch (error) {
+      console.error("Get images error:", error);
+      return res.status(500).json({
+        success: false,
+        msg: "Internal server error",
+        error: error.message,
+      });
+    }
+  };
+
+  const deleteNoteImage = async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          msg: "User not authenticated",
+        });
+      }
+
+      const { id } = req.params;
+
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          msg: "Image ID is required",
+        });
+      }
+
+      const image = await File.findOne({
+        where: {
+          id,
+          user_id: req.user.id,
+          mime_type: {
+            [Sequelize.Op.like]: "image/%",
+          },
+        },
+      });
+
+      if (!image) {
+        return res.status(404).json({
+          success: false,
+          msg: "Image not found",
+        });
+      }
+
+      const publicId = image.description;
+
+      try {
+        await cloudinary.uploader.destroy(publicId, {
+          invalidate: true,
+        });
+      } catch (cloudinaryError) {
+        console.error("Cloudinary delete error:", cloudinaryError);
+      }
+
+      await image.destroy();
+
+      return res.status(200).json({
+        success: true,
+        msg: "Image deleted successfully",
+      });
+    } catch (error) {
+      console.error("Delete image error:", error);
+      return res.status(500).json({
+        success: false,
+        msg: "Internal server error",
+        error: error.message,
+      });
+    }
+  };
 
   return {
     createNote,
@@ -1660,6 +2016,9 @@ const refactorCreateNote = async (req, res) => {
     getNoteTasks,
     getNoteContent,
     saveNoteContent,
+    uploadNoteImage,
+    getNoteImages,
+    deleteNoteImage,
   };
 };
 

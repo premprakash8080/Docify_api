@@ -1,0 +1,2007 @@
+{
+	"info": {
+		"_postman_id": "docify-api-collection",
+		"name": "Docify API - Complete Collection",
+		"description": "Complete API collection for Docify Evernote-style application",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{auth_token}}",
+				"type": "string"
+			}
+		]
+	},
+	"item": [
+		{
+			"name": "1. Authentication",
+			"item": [
+				{
+					"name": "Register",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data.token) {",
+									"        pm.environment.set('auth_token', jsonData.data.token);",
+									"        pm.environment.set('user_id', jsonData.data.user.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"password123\",\n  \"display_name\": \"John Doe\"\n}"
+						},
+						"url": {
+							"raw": "{{api_base}}/users/register",
+							"host": ["{{api_base}}"],
+							"path": ["users", "register"]
+						}
+					}
+				},
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data.token) {",
+									"        pm.environment.set('auth_token', jsonData.data.token);",
+									"        pm.environment.set('user_id', jsonData.data.user.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{api_base}}/users/login",
+							"host": ["{{api_base}}"],
+							"path": ["users", "login"]
+						}
+					}
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/users/logout",
+							"host": ["{{api_base}}"],
+							"path": ["users", "logout"]
+						}
+					}
+				},
+				{
+					"name": "Refresh Token",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"refresh_token\": \"your_refresh_token_here\"\n}"
+						},
+						"url": {
+							"raw": "{{api_base}}/users/refresh-token",
+							"host": ["{{api_base}}"],
+							"path": ["users", "refresh-token"]
+						}
+					}
+				},
+				{
+					"name": "Forgot Password",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"user@example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{api_base}}/users/forgot-password",
+							"host": ["{{api_base}}"],
+							"path": ["users", "forgot-password"]
+						}
+					}
+				},
+				{
+					"name": "Reset Password",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"token\": \"reset_token_here\",\n  \"password\": \"new_password123\"\n}"
+						},
+						"url": {
+							"raw": "{{api_base}}/users/reset-password",
+							"host": ["{{api_base}}"],
+							"path": ["users", "reset-password"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "2. User Profile",
+			"item": [
+				{
+					"name": "Get Profile",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/users/profile",
+							"host": ["{{api_base}}"],
+							"path": ["users", "profile"]
+						}
+					}
+				},
+				{
+					"name": "Update Profile",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "display_name",
+									"value": "Updated Name",
+									"type": "text"
+								},
+								{
+									"key": "avatar",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{api_base}}/users/profile",
+							"host": ["{{api_base}}"],
+							"path": ["users", "profile"]
+						}
+					}
+				},
+				{
+					"name": "Change Password",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"current_password\": \"old_password\",\n  \"new_password\": \"new_password123\"\n}"
+						},
+						"url": {
+							"raw": "{{api_base}}/users/change-password",
+							"host": ["{{api_base}}"],
+							"path": ["users", "change-password"]
+						}
+					}
+				},
+				{
+					"name": "Get User Settings",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/users/settings",
+							"host": ["{{api_base}}"],
+							"path": ["users", "settings"]
+						}
+					}
+				},
+				{
+					"name": "Update User Settings",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"theme_layout\": \"vex-layout-apollo\",\n  \"theme_color\": \"vex-style-default\",\n  \"corners\": \"0.5rem\",\n  \"button_style\": \"0.5rem\"\n}"
+						},
+						"url": {
+							"raw": "{{api_base}}/users/settings",
+							"host": ["{{api_base}}"],
+							"path": ["users", "settings"]
+						}
+					}
+				},
+				{
+					"name": "Delete Account",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/users/delete-account",
+							"host": ["{{api_base}}"],
+							"path": ["users", "delete-account"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "3. Stacks",
+			"item": [
+				{
+					"name": "Create Stack",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data.id) {",
+									"        pm.environment.set('stack_id', jsonData.data.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"My Stack\",\n  \"description\": \"Stack description\",\n  \"color_id\": 1,\n  \"sort_order\": 0\n}"
+						},
+						"url": {
+							"raw": "{{api_base}}/stacks",
+							"host": ["{{api_base}}"],
+							"path": ["stacks"]
+						}
+					}
+				},
+				{
+					"name": "Get All Stacks",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/stacks",
+							"host": ["{{api_base}}"],
+							"path": ["stacks"]
+						}
+					}
+				},
+				{
+					"name": "Get Stack By ID",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"id\": \"{{stack_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{api_base}}/stacks/:id",
+							"host": ["{{api_base}}"],
+							"path": ["stacks", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{stack_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Stack",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"id\": \"{{stack_id}}\",\n  \"name\": \"Updated Stack Name\",\n  \"description\": \"Updated description\",\n  \"color_id\": 2\n}"
+						},
+						"url": {
+							"raw": "{{api_base}}/stacks/:id",
+							"host": ["{{api_base}}"],
+							"path": ["stacks", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{stack_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Delete Stack",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/stacks/:id",
+							"host": ["{{api_base}}"],
+							"path": ["stacks", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{stack_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Reorder Stacks",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"stacks\": [\n    { \"id\": \"{{stack_id}}\", \"sort_order\": 0 },\n    { \"id\": \"another_stack_id\", \"sort_order\": 1 }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{api_base}}/stacks/reorder",
+							"host": ["{{api_base}}"],
+							"path": ["stacks", "reorder"]
+						}
+					}
+				},
+				{
+					"name": "Get Stack Notebooks",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"id\": \"{{stack_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{api_base}}/stacks/:id/notebooks",
+							"host": ["{{api_base}}"],
+							"path": ["stacks", ":id", "notebooks"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{stack_id}}"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "4. Notebooks",
+			"item": [
+				{
+					"name": "Create Notebook",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data.id) {",
+									"        pm.environment.set('notebook_id', jsonData.data.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"My Notebook\",\n  \"description\": \"Notebook description\",\n  \"stack_id\": \"{{stack_id}}\",\n  \"color_id\": 1,\n  \"sort_order\": 0\n}"
+						},
+						"url": {
+							"raw": "{{api_base}}/notebooks",
+							"host": ["{{api_base}}"],
+							"path": ["notebooks"]
+						}
+					}
+				},
+				{
+					"name": "Get All Notebooks",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"stack_id\": \"{{stack_id}}\",\n  \"archived\": false,\n  \"trashed\": false\n}"
+						},
+						"url": {
+							"raw": "{{api_base}}/notebooks/list",
+							"host": ["{{api_base}}"],
+							"path": ["notebooks", "list"]
+						}
+					}
+				},
+				{
+					"name": "Get Notebook By ID",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"id\": \"{{notebook_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{api_base}}/notebooks/:id",
+							"host": ["{{api_base}}"],
+							"path": ["notebooks", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{notebook_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Notebook",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"id\": \"{{notebook_id}}\",\n  \"name\": \"Updated Notebook Name\",\n  \"description\": \"Updated description\",\n  \"color_id\": 2\n}"
+						},
+						"url": {
+							"raw": "{{api_base}}/notebooks/:id",
+							"host": ["{{api_base}}"],
+							"path": ["notebooks", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{notebook_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Delete Notebook",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/notebooks/:id",
+							"host": ["{{api_base}}"],
+							"path": ["notebooks", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{notebook_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Reorder Notebooks",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"notebooks\": [\n    { \"id\": \"{{notebook_id}}\", \"sort_order\": 0 },\n    { \"id\": \"another_notebook_id\", \"sort_order\": 1 }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{api_base}}/notebooks/reorder",
+							"host": ["{{api_base}}"],
+							"path": ["notebooks", "reorder"]
+						}
+					}
+				},
+				{
+					"name": "Move Notebook To Stack",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"notebook_id\": \"{{notebook_id}}\",\n  \"stack_id\": \"{{stack_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{api_base}}/notebooks/stack/updateNotebookStack",
+							"host": ["{{api_base}}"],
+							"path": ["notebooks", "stack", "updateNotebookStack"]
+						}
+					}
+				},
+				{
+					"name": "Remove Notebook From Stack",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"notebook_id\": \"{{notebook_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{api_base}}/notebooks/stack/removeNotebookFromStack",
+							"host": ["{{api_base}}"],
+							"path": ["notebooks", "stack", "removeNotebookFromStack"]
+						}
+					}
+				},
+				{
+					"name": "Get Notebook Notes",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"id\": \"{{notebook_id}}\",\n  \"archived\": false,\n  \"trashed\": false,\n  \"pinned\": false\n}"
+						},
+						"url": {
+							"raw": "{{api_base}}/notebooks/:id/notes",
+							"host": ["{{api_base}}"],
+							"path": ["notebooks", ":id", "notes"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{notebook_id}}"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "5. Notes",
+			"item": [
+				{
+					"name": "Create Note",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data.id) {",
+									"        pm.environment.set('note_id', jsonData.data.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"My Note Title\",\n  \"notebook_id\": \"{{notebook_id}}\",\n  \"firebase_document_id\": \"optional-uuid-here\"\n}"
+						},
+						"url": {
+							"raw": "{{api_base}}/notes",
+							"host": ["{{api_base}}"],
+							"path": ["notes"]
+						}
+					}
+				},
+				{
+					"name": "Get All Notes",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/notes?notebook_id={{notebook_id}}&archived=false&trashed=false&pinned=false",
+							"host": ["{{api_base}}"],
+							"path": ["notes"],
+							"query": [
+								{
+									"key": "notebook_id",
+									"value": "{{notebook_id}}"
+								},
+								{
+									"key": "archived",
+									"value": "false"
+								},
+								{
+									"key": "trashed",
+									"value": "false"
+								},
+								{
+									"key": "pinned",
+									"value": "false"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Note By ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/notes/:id",
+							"host": ["{{api_base}}"],
+							"path": ["notes", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{note_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Note Metadata",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Updated Note Title\",\n  \"notebook_id\": \"{{notebook_id}}\",\n  \"version\": 1\n}"
+						},
+						"url": {
+							"raw": "{{api_base}}/notes/:id",
+							"host": ["{{api_base}}"],
+							"path": ["notes", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{note_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Delete Note",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/notes/:id",
+							"host": ["{{api_base}}"],
+							"path": ["notes", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{note_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Note Content",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/notes/:id/content",
+							"host": ["{{api_base}}"],
+							"path": ["notes", ":id", "content"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{note_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Save Note Content",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"content\": \"<p>Note content here</p>\",\n  \"title\": \"Note Title\"\n}"
+						},
+						"url": {
+							"raw": "{{api_base}}/notes/:id/content",
+							"host": ["{{api_base}}"],
+							"path": ["notes", ":id", "content"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{note_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Pin Note",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/notes/:id/pin",
+							"host": ["{{api_base}}"],
+							"path": ["notes", ":id", "pin"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{note_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Unpin Note",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/notes/:id/unpin",
+							"host": ["{{api_base}}"],
+							"path": ["notes", ":id", "unpin"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{note_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Archive Note",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/notes/:id/archive",
+							"host": ["{{api_base}}"],
+							"path": ["notes", ":id", "archive"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{note_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Unarchive Note",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/notes/:id/unarchive",
+							"host": ["{{api_base}}"],
+							"path": ["notes", ":id", "unarchive"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{note_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Trash Note",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/notes/:id/trash",
+							"host": ["{{api_base}}"],
+							"path": ["notes", ":id", "trash"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{note_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Restore Note",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/notes/:id/restore",
+							"host": ["{{api_base}}"],
+							"path": ["notes", ":id", "restore"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{note_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Mark Note Synced",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/notes/:id/synced",
+							"host": ["{{api_base}}"],
+							"path": ["notes", ":id", "synced"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{note_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Move Note To Notebook",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"notebook_id\": \"{{notebook_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{api_base}}/notes/:id/notebook/:notebookId",
+							"host": ["{{api_base}}"],
+							"path": ["notes", ":id", "notebook", ":notebookId"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{note_id}}"
+								},
+								{
+									"key": "notebookId",
+									"value": "{{notebook_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Note Files",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/notes/:id/files",
+							"host": ["{{api_base}}"],
+							"path": ["notes", ":id", "files"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{note_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Note Tasks",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/notes/:id/tasks",
+							"host": ["{{api_base}}"],
+							"path": ["notes", ":id", "tasks"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{note_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Add Tag To Note",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/notes/:id/tags/:tagId",
+							"host": ["{{api_base}}"],
+							"path": ["notes", ":id", "tags", ":tagId"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{note_id}}"
+								},
+								{
+									"key": "tagId",
+									"value": "{{tag_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Remove Tag From Note",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/notes/:id/tags/:tagId",
+							"host": ["{{api_base}}"],
+							"path": ["notes", ":id", "tags", ":tagId"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{note_id}}"
+								},
+								{
+									"key": "tagId",
+									"value": "{{tag_id}}"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "6. Tags",
+			"item": [
+				{
+					"name": "Create Tag",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data.id) {",
+									"        pm.environment.set('tag_id', jsonData.data.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Important\",\n  \"color_id\": 1\n}"
+						},
+						"url": {
+							"raw": "{{api_base}}/tags",
+							"host": ["{{api_base}}"],
+							"path": ["tags"]
+						}
+					}
+				},
+				{
+					"name": "Get All Tags",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/tags",
+							"host": ["{{api_base}}"],
+							"path": ["tags"]
+						}
+					}
+				},
+				{
+					"name": "Get Tag By ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/tags/:id",
+							"host": ["{{api_base}}"],
+							"path": ["tags", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{tag_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Tag",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"id\": \"{{tag_id}}\",\n  \"name\": \"Updated Tag Name\",\n  \"color_id\": 2\n}"
+						},
+						"url": {
+							"raw": "{{api_base}}/tags/:id",
+							"host": ["{{api_base}}"],
+							"path": ["tags", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{tag_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Delete Tag",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/tags/:id",
+							"host": ["{{api_base}}"],
+							"path": ["tags", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{tag_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Colors",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/tags/colors",
+							"host": ["{{api_base}}"],
+							"path": ["tags", "colors"]
+						}
+					}
+				},
+				{
+					"name": "Attach Tag To Note",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/tags/:id/notes/:noteId",
+							"host": ["{{api_base}}"],
+							"path": ["tags", ":id", "notes", ":noteId"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{tag_id}}"
+								},
+								{
+									"key": "noteId",
+									"value": "{{note_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Detach Tag From Note",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/tags/:id/notes/:noteId",
+							"host": ["{{api_base}}"],
+							"path": ["tags", ":id", "notes", ":noteId"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{tag_id}}"
+								},
+								{
+									"key": "noteId",
+									"value": "{{note_id}}"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "7. Files",
+			"item": [
+				{
+					"name": "Upload File",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data.id) {",
+									"        pm.environment.set('file_id', jsonData.data.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "note_id",
+									"value": "{{note_id}}",
+									"type": "text",
+									"disabled": true
+								},
+								{
+									"key": "description",
+									"value": "File description",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{api_base}}/files",
+							"host": ["{{api_base}}"],
+							"path": ["files"]
+						}
+					}
+				},
+				{
+					"name": "Get All Files",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/files?note_id={{note_id}}",
+							"host": ["{{api_base}}"],
+							"path": ["files"],
+							"query": [
+								{
+									"key": "note_id",
+									"value": "{{note_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get File By ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/files/:id",
+							"host": ["{{api_base}}"],
+							"path": ["files", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{file_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Update File Metadata",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"id\": \"{{file_id}}\",\n  \"filename\": \"updated_filename.jpg\",\n  \"description\": \"Updated description\"\n}"
+						},
+						"url": {
+							"raw": "{{api_base}}/files/:id",
+							"host": ["{{api_base}}"],
+							"path": ["files", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{file_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Delete File",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/files/:id",
+							"host": ["{{api_base}}"],
+							"path": ["files", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{file_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Attach File To Note",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/files/:id/note/:noteId",
+							"host": ["{{api_base}}"],
+							"path": ["files", ":id", "note", ":noteId"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{file_id}}"
+								},
+								{
+									"key": "noteId",
+									"value": "{{note_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Detach File From Note",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/files/:id/note",
+							"host": ["{{api_base}}"],
+							"path": ["files", ":id", "note"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{file_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Note Files",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/files/note/:noteId",
+							"host": ["{{api_base}}"],
+							"path": ["files", "note", ":noteId"],
+							"variable": [
+								{
+									"key": "noteId",
+									"value": "{{note_id}}"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "8. Tasks",
+			"item": [
+				{
+					"name": "Create Task",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data.id) {",
+									"        pm.environment.set('task_id', jsonData.data.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"note_id\": \"{{note_id}}\",\n  \"label\": \"Task label\",\n  \"description\": \"Task description\",\n  \"due_date\": \"2024-12-31T00:00:00Z\",\n  \"priority\": \"high\",\n  \"flagged\": false,\n  \"sort_order\": 0\n}"
+						},
+						"url": {
+							"raw": "{{api_base}}/tasks",
+							"host": ["{{api_base}}"],
+							"path": ["tasks"]
+						}
+					}
+				},
+				{
+					"name": "Get Task By ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/tasks/getTaskById?id={{task_id}}",
+							"host": ["{{api_base}}"],
+							"path": ["tasks", "getTaskById"],
+							"query": [
+								{
+									"key": "id",
+									"value": "{{task_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Task",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"id\": \"{{task_id}}\",\n  \"label\": \"Updated task label\",\n  \"description\": \"Updated description\",\n  \"due_date\": \"2024-12-31T00:00:00Z\",\n  \"priority\": \"medium\",\n  \"flagged\": true,\n  \"sort_order\": 1\n}"
+						},
+						"url": {
+							"raw": "{{api_base}}/tasks/updateTask",
+							"host": ["{{api_base}}"],
+							"path": ["tasks", "updateTask"]
+						}
+					}
+				},
+				{
+					"name": "Toggle Task Complete",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"id\": \"{{task_id}}\",\n  \"completed\": true\n}"
+						},
+						"url": {
+							"raw": "{{api_base}}/tasks/toggleTaskComplete",
+							"host": ["{{api_base}}"],
+							"path": ["tasks", "toggleTaskComplete"]
+						}
+					}
+				},
+				{
+					"name": "Delete Task",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"id\": \"{{task_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{api_base}}/tasks/deleteTask",
+							"host": ["{{api_base}}"],
+							"path": ["tasks", "deleteTask"]
+						}
+					}
+				},
+				{
+					"name": "Reorder Tasks",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"tasks\": [\n    { \"id\": \"{{task_id}}\", \"sort_order\": 0 },\n    { \"id\": \"another_task_id\", \"sort_order\": 1 }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{api_base}}/tasks/reorder",
+							"host": ["{{api_base}}"],
+							"path": ["tasks", "reorder"]
+						}
+					}
+				},
+				{
+					"name": "Get All Tasks",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/tasks/getAllTasks",
+							"host": ["{{api_base}}"],
+							"path": ["tasks", "getAllTasks"]
+						}
+					}
+				},
+				{
+					"name": "Get Note Tasks",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/tasks/getNoteTasks?note_id={{note_id}}",
+							"host": ["{{api_base}}"],
+							"path": ["tasks", "getNoteTasks"],
+							"query": [
+								{
+									"key": "note_id",
+									"value": "{{note_id}}"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "9. Calendar",
+			"item": [
+				{
+					"name": "Get Calendar Events By Date",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/calendar/getCalendarEventsByDate?date=2024-01-01&view=month",
+							"host": ["{{api_base}}"],
+							"path": ["calendar", "getCalendarEventsByDate"],
+							"query": [
+								{
+									"key": "date",
+									"value": "2024-01-01",
+									"description": "Date in YYYY-MM-DD format"
+								},
+								{
+									"key": "view",
+									"value": "month",
+									"description": "View type: day, week, or month"
+								}
+							]
+						},
+						"description": "Note: Controller expects req.body, but route is GET. If this fails, the route may need to be changed to POST."
+					}
+				},
+				{
+					"name": "Get Calendar Event By ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/calendar/getCalendarEventById/:id",
+							"host": ["{{api_base}}"],
+							"path": ["calendar", "getCalendarEventById", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{note_id}}"
+								}
+							]
+						},
+						"description": "Note: Controller expects req.body.id, but route is GET with param. If this fails, check controller implementation."
+					}
+				},
+				{
+					"name": "Get Calendar Events By Range",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/calendar/getCalendarEventsByRange?start=2024-01-01&end=2024-01-31",
+							"host": ["{{api_base}}"],
+							"path": ["calendar", "getCalendarEventsByRange"],
+							"query": [
+								{
+									"key": "start",
+									"value": "2024-01-01",
+									"description": "Start date in YYYY-MM-DD format"
+								},
+								{
+									"key": "end",
+									"value": "2024-01-31",
+									"description": "End date in YYYY-MM-DD format"
+								}
+							]
+						},
+						"description": "Note: Controller expects req.body.start and req.body.end, but route is GET. If this fails, the route may need to be changed to POST."
+					}
+				},
+				{
+					"name": "Get Calendar Items",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/calendar/getCalendarItems",
+							"host": ["{{api_base}}"],
+							"path": ["calendar", "getCalendarItems"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "10. Templates",
+			"item": [
+				{
+					"name": "Get All Templates",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/templates/getAllTemplates",
+							"host": ["{{api_base}}"],
+							"path": ["templates", "getAllTemplates"]
+						}
+					}
+				},
+				{
+					"name": "Get System Templates",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/templates/getSystemTemplates",
+							"host": ["{{api_base}}"],
+							"path": ["templates", "getSystemTemplates"]
+						}
+					}
+				},
+				{
+					"name": "Get User Templates",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/templates/getMyTemplates",
+							"host": ["{{api_base}}"],
+							"path": ["templates", "getMyTemplates"]
+						}
+					}
+				},
+				{
+					"name": "Get Template By ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/templates/getTemplateById?id={{template_id}}",
+							"host": ["{{api_base}}"],
+							"path": ["templates", "getTemplateById"],
+							"query": [
+								{
+									"key": "id",
+									"value": "{{template_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Template",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data.id) {",
+									"        pm.environment.set('template_id', jsonData.data.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Template Title\",\n  \"content\": \"<p>Template content</p>\",\n  \"is_system\": false\n}"
+						},
+						"url": {
+							"raw": "{{api_base}}/templates/createTemplate",
+							"host": ["{{api_base}}"],
+							"path": ["templates", "createTemplate"]
+						}
+					}
+				},
+				{
+					"name": "Clone Template",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"template_id\": \"{{template_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{api_base}}/templates/cloneTemplate",
+							"host": ["{{api_base}}"],
+							"path": ["templates", "cloneTemplate"]
+						}
+					}
+				},
+				{
+					"name": "Delete Template",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/templates/deleteTemplate/:id",
+							"host": ["{{api_base}}"],
+							"path": ["templates", "deleteTemplate", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{template_id}}"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "11. Colors",
+			"item": [
+				{
+					"name": "Get All Colors",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/colors",
+							"host": ["{{api_base}}"],
+							"path": ["colors"]
+						}
+					}
+				},
+				{
+					"name": "Get Color By ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/colors/:id",
+							"host": ["{{api_base}}"],
+							"path": ["colors", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{color_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Color",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data.id) {",
+									"        pm.environment.set('color_id', jsonData.data.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Red\",\n  \"hex_code\": \"#FF0000\"\n}"
+						},
+						"url": {
+							"raw": "{{api_base}}/colors",
+							"host": ["{{api_base}}"],
+							"path": ["colors"]
+						}
+					}
+				},
+				{
+					"name": "Update Color",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"id\": \"{{color_id}}\",\n  \"name\": \"Dark Red\",\n  \"hex_code\": \"#CC0000\"\n}"
+						},
+						"url": {
+							"raw": "{{api_base}}/colors/:id",
+							"host": ["{{api_base}}"],
+							"path": ["colors", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{color_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Delete Color",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{api_base}}/colors/:id",
+							"host": ["{{api_base}}"],
+							"path": ["colors", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{color_id}}"
+								}
+							]
+						}
+					}
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	]
+}

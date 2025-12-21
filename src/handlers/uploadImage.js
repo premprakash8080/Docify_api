@@ -68,4 +68,41 @@ const deleteImage = async (url) =>
     resolve();
   });
 
-module.exports = { cloudinary, uploadImage, deleteImage };
+// Note image upload handler - stores in notes/{userId}/ folder
+const noteImageStorage = new CloudinaryStorage({
+  cloudinary,
+  params: async (req, file) => {
+    const userId = req.user?.id || "unknown";
+    return {
+      folder: `notes/${userId}`,
+      resource_type: "image",
+      public_id: `${Date.now()}_${file.originalname.replace(/\s+/g, "_").replace(/\.[^/.]+$/, "")}`,
+    };
+  },
+});
+
+const uploadNoteImage = multer({
+  storage: noteImageStorage,
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith("image/")) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only image files are allowed"), false);
+    }
+  },
+  limits: { fileSize: 1024 * 1024 * 10 },
+});
+
+const uploadNoteImageMiddleware = (req, res, next) => {
+  uploadNoteImage.single("image")(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({
+        success: false,
+        msg: err.message || "Image upload error",
+      });
+    }
+    next();
+  });
+};
+
+module.exports = { cloudinary, uploadImage, deleteImage, uploadNoteImageMiddleware };

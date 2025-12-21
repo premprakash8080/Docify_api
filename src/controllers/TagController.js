@@ -565,6 +565,35 @@ const TagController = () => {
     }
   };
 
+  const getUserTags = async (req, res) => {
+    try {
+      const tags = await Tag.findAll({
+        where: {
+          user_id: req.user.id,
+        },
+        attributes: ["id", "name"],
+        include: [
+          {
+            model: Color,
+            as: "color",
+            attributes: ["id", "name", "hex_code"],
+          },
+        ],
+      });
+      return res.status(200).json({
+        success: true,
+        data: { tags },
+      });
+    }
+    catch (error) {
+      console.error("Get user tags error:", error);
+      return res.status(500).json({
+        success: false,
+        msg: "Internal server error",
+        error: error.message,
+      });
+    }
+  };
   return {
     createTag,
     getAllTags,
@@ -574,6 +603,7 @@ const TagController = () => {
     attachTagToNote,
     detachTagFromNote,
     getColors,
+    getUserTags
   };
 };
 

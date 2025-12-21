@@ -29,8 +29,10 @@ const {
 
   // Tasks
   getNoteTasks,
-  getNoteContent,
   saveNoteContent,
+  uploadNoteImage,
+  getNoteImages,
+  deleteNoteImage,
 } = require("../controllers/NoteController");
 
 // Apply JWT middleware to all routes
@@ -40,8 +42,8 @@ router.use(jwtVerify);
 // Notes CRUD (metadata only)
 // ==============================
 router.post("/", createNote);
-router.get("/", getAllNotes);
-router.get("/:id", getNoteById);
+router.get("/getAllNotes", getAllNotes);
+router.post("/getNoteById", getNoteById);
 router.put("/:id", updateNoteMeta);
 router.delete("/:id", deleteNote);
 
@@ -82,8 +84,15 @@ router.get("/:id/tasks", getNoteTasks);
 // ==============================
 // Note Content
 // ==============================
-router.get("/:id/content", getNoteContent);
 router.put("/:id/content", saveNoteContent);
 
+// ==============================
+// Note Images
+// ==============================
+const { uploadNoteImageMiddleware } = require("../handlers/uploadImage");
+
+router.post("/images", uploadNoteImageMiddleware, uploadNoteImage);
+router.get("/images", getNoteImages);
+router.delete("/images/:id", deleteNoteImage);
 
 module.exports = router;
