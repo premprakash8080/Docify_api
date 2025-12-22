@@ -144,7 +144,7 @@ const TagController = () => {
   /**
    * @description Get a single tag by ID
    * @param req.user - User from authentication middleware
-   * @param req.body.id - Tag ID
+   * @param req.query.id - Tag ID
    * @returns tag details
    */
   const getTagById = async (req, res) => {
@@ -156,7 +156,7 @@ const TagController = () => {
         });
       }
 
-      const { id } = req.params;
+      const { id } = req.query;
 
       if (!id) {
         return res.status(400).json({
