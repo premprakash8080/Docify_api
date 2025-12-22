@@ -21,39 +21,43 @@ const TaskController = () => {
         });
       }
 
-      const { 
-        note_id, 
-        label, 
+      const {
+        note_id,
+        label,
         description,
         due_date,
+        start_time,
+        end_time,
         reminder,
         assigned_to,
         priority,
         flagged,
-        sort_order, 
-        completed 
+        sort_order,
+        completed
       } = req.body;
 
-      if (!note_id || !label) {
+      if (!due_date || !label || !end_time || !start_time) {
         return res.status(400).json({
           success: false,
-          msg: "Note ID and label are required",
+          msg: "Required fields are missing",
         });
       }
 
       // Verify note belongs to user
-      const note = await Note.findOne({
-        where: {
-          id: note_id,
-          user_id: req.user.id,
-        },
-      });
-
-      if (!note) {
-        return res.status(404).json({
-          success: false,
-          msg: "Note not found",
+      if (note_id) {
+        const note = await Note.findOne({
+          where: {
+            id: note_id,
+            user_id: req.user.id,
+          },
         });
+
+        if (!note) {
+          return res.status(404).json({
+            success: false,
+            msg: "Note not found",
+          });
+        }
       }
 
       // Get max sort_order for this note if not provided
@@ -69,10 +73,12 @@ const TaskController = () => {
 
       // Create task
       const task = await Task.create({
-        note_id,
+        note_id: note_id || null,
         label: label.trim(),
         description: description ? description.trim() : null,
-        due_date: due_date || null,
+        start_date: due_date || null,
+        start_time: start_time || null,
+        end_time: end_time || null,
         reminder: reminder || null,
         assigned_to: assigned_to ? assigned_to.trim() : null,
         priority: priority || null,
@@ -166,12 +172,14 @@ const TaskController = () => {
   };
 
   /**
-   * @description Update task (label, description, due_date, reminder, assigned_to, priority, flagged, sort_order)
+   * @description Update task (label, description, start_date, start_time, end_time, reminder, assigned_to, priority, flagged, sort_order)
    * @param req.user - User from authentication middleware
    * @param req.body.id - Task ID (from body)
    * @param req.body.label - New label (optional)
    * @param req.body.description - New description (optional)
-   * @param req.body.due_date - New due date (optional)
+   * @param req.body.start_date - New start date (optional)
+   * @param req.body.start_time - New start time (optional)
+   * @param req.body.end_time - New end time (optional)
    * @param req.body.reminder - New reminder (optional)
    * @param req.body.assigned_to - New assignee (optional)
    * @param req.body.priority - New priority (optional)
@@ -188,16 +196,19 @@ const TaskController = () => {
         });
       }
 
-      const { 
-        id, 
-        label, 
+      const {
+        id,
+        label,
         description,
-        due_date,
+        due_date, // Map to start_date for backward compatibility
+        start_date,
+        start_time,
+        end_time,
         reminder,
         assigned_to,
         priority,
         flagged,
-        sort_order 
+        sort_order
       } = req.body;
 
       if (!id) {
@@ -219,19 +230,24 @@ const TaskController = () => {
         });
       }
 
-      // Verify note belongs to user
-      const note = await Note.findOne({
-        where: {
-          id: task.note_id,
-          user_id: req.user.id,
-        },
-      });
-
-      if (!note) {
-        return res.status(403).json({
-          success: false,
-          msg: "Access denied: Task does not belong to user",
+      // Verify task belongs to user
+      // If task has a note_id, verify the note belongs to user
+      // If task has no note_id (standalone), we need to check ownership differently
+      // For now, if note_id is null, we'll allow the update (you may want to add user_id to tasks later)
+      if (task.note_id) {
+        const note = await Note.findOne({
+          where: {
+            id: task.note_id,
+            user_id: req.user.id,
+          },
         });
+
+        if (!note) {
+          return res.status(403).json({
+            success: false,
+            msg: "Access denied: Task does not belong to user",
+          });
+        }
       }
 
       // Update task fields
@@ -241,8 +257,17 @@ const TaskController = () => {
       if (description !== undefined) {
         task.description = description ? description.trim() : null;
       }
+      // Handle due_date for backward compatibility (map to start_date)
       if (due_date !== undefined) {
-        task.due_date = due_date || null;
+        task.start_date = due_date || null;
+      } else if (start_date !== undefined) {
+        task.start_date = start_date || null;
+      }
+      if (start_time !== undefined) {
+        task.start_time = start_time || null;
+      }
+      if (end_time !== undefined) {
+        task.end_time = end_time || null;
       }
       if (reminder !== undefined) {
         task.reminder = reminder || null;
@@ -262,11 +287,19 @@ const TaskController = () => {
 
       await task.save();
 
+      // Format response with backward compatibility fields
+      const taskData = task.toJSON();
+      const formattedTask = {
+        ...taskData,
+        end_date: null, // For backward compatibility
+        due_date: taskData.start_date, // Map start_date to due_date for backward compatibility
+      };
+
       return res.status(200).json({
         success: true,
         msg: "Task updated successfully",
         data: {
-          task,
+          task: formattedTask,
         },
       });
     } catch (error) {
@@ -578,8 +611,18 @@ const TaskController = () => {
   };
 
   /**
-   * @description Get all tasks for the current user
+   * @description Get all tasks for the current user with filtering and sorting
    * @param req.user - User from authentication middleware
+   * @param req.query.q - Search query (searches in label and description)
+   * @param req.query.label - Filter by task label
+   * @param req.query.assigned_to - Filter by assigned_to
+   * @param req.query.note_id - Filter by note_id
+   * @param req.query.note_label - Filter by note title/label
+   * @param req.query.priority - Filter by priority (low, medium, high)
+   * @param req.query.status - Filter by completion status (completed, incomplete)
+   * @param req.query.due_date - Filter by due_date (maps to start_date)
+   * @param req.query.sort_by - Sort field (label, start_date, due_date, created_at, updated_at, sort_order)
+   * @param req.query.sort_order - Sort order (asc, desc)
    * @returns list of tasks
    */
   const getAllTasks = async (req, res) => {
@@ -591,7 +634,22 @@ const TaskController = () => {
         });
       }
 
-      // Get all tasks for the current user by joining with notes
+      // Extract query parameters
+      const {
+        q,
+        label,
+        assigned_to,
+        note_id,
+        note_label,
+        priority,
+        status,
+        due_date,
+        sort_by = "sort_order",
+        sort_order = "asc",
+      } = req.query;
+
+      // Get all tasks for the current user
+      // Tasks can belong to user's notes OR be standalone (note_id is null)
       // First get all user's notes
       const userNotes = await Note.findAll({
         where: {
@@ -602,31 +660,196 @@ const TaskController = () => {
 
       const noteIds = userNotes.map(note => note.id);
 
-      if (noteIds.length === 0) {
-        return res.status(200).json({
-          success: true,
-          data: {
-            tasks: [],
-            count: 0,
+      // Build base where clause to get tasks from user's notes OR tasks with null note_id
+      const baseConditions = [];
+      
+      // If note_id filter is specified, use it directly (but still verify user ownership)
+      if (note_id) {
+        // Verify the note belongs to user
+        const userNote = await Note.findOne({
+          where: {
+            id: note_id,
+            user_id: req.user.id,
           },
+        });
+        if (userNote) {
+          baseConditions.push({ note_id: note_id });
+        } else {
+          // Note doesn't belong to user, return empty result
+          return res.status(200).json({
+            success: true,
+            data: {
+              tasks: [],
+              count: 0,
+            },
+          });
+        }
+      } else {
+        // Tasks belonging to user's notes
+        if (noteIds.length > 0) {
+          baseConditions.push({ note_id: { [Sequelize.Op.in]: noteIds } });
+        }
+        // Standalone tasks (note_id is null)
+        baseConditions.push({ note_id: null });
+      }
+
+      // Build additional filters
+      const additionalFilters = [];
+
+      // Apply search query filter (q)
+      if (q && q.trim()) {
+        additionalFilters.push({
+          [Sequelize.Op.or]: [
+            { label: { [Sequelize.Op.like]: `%${q.trim()}%` } },
+            { description: { [Sequelize.Op.like]: `%${q.trim()}%` } },
+          ],
         });
       }
 
-      // Get all tasks for user's notes
+      // Apply label filter (task label)
+      if (label) {
+        additionalFilters.push({
+          label: { [Sequelize.Op.like]: `%${label.trim()}%` },
+        });
+      }
+
+      // Apply assigned_to filter
+      if (assigned_to) {
+        additionalFilters.push({
+          assigned_to: { [Sequelize.Op.like]: `%${assigned_to.trim()}%` },
+        });
+      }
+
+      // Apply priority filter
+      if (priority) {
+        additionalFilters.push({ priority: priority.toLowerCase() });
+      }
+
+      // Apply status filter (completed/incomplete)
+      if (status) {
+        if (status.toLowerCase() === "completed") {
+          additionalFilters.push({ completed: true });
+        } else if (status.toLowerCase() === "incomplete") {
+          additionalFilters.push({ completed: false });
+        }
+      }
+
+      // Apply due_date filter (maps to start_date)
+      if (due_date) {
+        additionalFilters.push({ start_date: due_date });
+      }
+
+      // Build include clause for Note (needed for note_label filter and sorting)
+      const includeClause = [];
+      
+      // When filtering by note_label, only include tasks that have a note
+      if (note_label) {
+        // Remove null note_id condition when filtering by note_label
+        const filteredBaseConditions = baseConditions.filter(cond => {
+          return !(cond.note_id === null);
+        });
+        
+        // If we have valid base conditions (tasks with notes), add the Note include
+        if (filteredBaseConditions.length > 0 || (noteIds.length > 0 && !note_id)) {
+          includeClause.push({
+            model: Note,
+            as: "note",
+            where: {
+              user_id: req.user.id,
+              title: { [Sequelize.Op.like]: `%${note_label.trim()}%` },
+            },
+            required: true, // INNER JOIN - only tasks with matching notes
+            attributes: ["id", "title"],
+          });
+          
+          // Update baseConditions to exclude null note_id when filtering by note_label
+          baseConditions.length = 0;
+          if (noteIds.length > 0) {
+            baseConditions.push({ note_id: { [Sequelize.Op.in]: noteIds } });
+          }
+        } else {
+          // No valid notes, return empty result
+          return res.status(200).json({
+            success: true,
+            data: {
+              tasks: [],
+              count: 0,
+            },
+          });
+        }
+      } else if (sort_by.toLowerCase() === "note_label") {
+        // When sorting by note_label, include Note but don't require it (LEFT JOIN)
+        includeClause.push({
+          model: Note,
+          as: "note",
+          where: { user_id: req.user.id },
+          required: false, // LEFT JOIN - include tasks even without notes
+          attributes: ["id", "title"],
+        });
+      }
+
+      // Combine all conditions (after potential baseConditions modification)
+      const whereClause = additionalFilters.length > 0
+        ? {
+            [Sequelize.Op.and]: [
+              { [Sequelize.Op.or]: baseConditions },
+              ...additionalFilters,
+            ],
+          }
+        : {
+            [Sequelize.Op.or]: baseConditions,
+          };
+
+      // Build order clause
+      const orderBy = [];
+      const validSortFields = ["label", "start_date", "due_date", "created_at", "updated_at", "sort_order", "note_label"];
+      const sortField = validSortFields.includes(sort_by.toLowerCase()) 
+        ? sort_by.toLowerCase() 
+        : "sort_order";
+      const sortDirection = sort_order.toLowerCase() === "desc" ? "DESC" : "ASC";
+      
+      // Map due_date to start_date for backward compatibility
+      let actualSortField = sortField === "due_date" ? "start_date" : sortField;
+      
+      // Handle note_label sorting (requires join)
+      if (actualSortField === "note_label") {
+        // If sorting by note_label, we need to include Note
+        if (includeClause.length === 0) {
+          includeClause.push({
+            model: Note,
+            as: "note",
+            where: { user_id: req.user.id },
+            required: false,
+            attributes: ["id", "title"],
+          });
+        }
+        orderBy.push([{ model: Note, as: "note" }, "title", sortDirection]);
+      } else {
+        orderBy.push([actualSortField, sortDirection]);
+      }
+
+      // Get all tasks matching the criteria
       const tasks = await Task.findAll({
-        where: {
-          note_id: {
-            [Sequelize.Op.in]: noteIds,
-          },
-        },
-        order: [["sort_order", "ASC"], ["created_at", "ASC"]],
+        where: whereClause,
+        include: includeClause.length > 0 ? includeClause : undefined,
+        order: orderBy,
+      });
+
+      // Format tasks for response (add null fields for backward compatibility)
+      const formattedTasks = tasks.map(task => {
+        const taskData = task.toJSON();
+        return {
+          ...taskData,
+          end_date: null, // For backward compatibility
+          due_date: taskData.start_date || null, // Map start_date to due_date for backward compatibility
+        };
       });
 
       return res.status(200).json({
         success: true,
         data: {
-          tasks,
-          count: tasks.length,
+          tasks: formattedTasks,
+          count: formattedTasks.length,
         },
       });
     } catch (error) {

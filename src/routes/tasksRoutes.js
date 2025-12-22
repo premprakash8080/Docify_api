@@ -18,7 +18,7 @@ router.use(jwtVerify);
 // ==============================
 // Task CRUD
 // ==============================
-router.post("/", createTask);                    // Create task (under a note)
+router.post("/createTask", createTask);                    // Create task (under a note)
 router.get("/getTaskById", getTaskById);         // Get single task
 router.put("/updateTask", updateTask);           // Update label / order
 router.put("/toggleTaskComplete", toggleTaskComplete);

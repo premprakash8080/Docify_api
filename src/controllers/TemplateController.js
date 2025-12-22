@@ -54,10 +54,24 @@ const TemplateController = () => {
         attributes: ["id", "name", "description", "image_url", "content", "user_id", "is_system", "createdAt", "updatedAt"]
       });
 
+      const TRIM_LENGTH = 300; // adjust as needed
+
+      const trimmedTemplates = templates.map(template => {
+        const data = template.toJSON();
+  
+        return {
+          ...data,
+          content: data.content
+            ? data.content.substring(0, TRIM_LENGTH)
+            : ""
+        };
+      });
+  
+
       return res.status(200).json({
         success: true,
         msg: "System templates fetched successfully",
-        data: { templates }
+        data: { templates: trimmedTemplates }
       });
     } catch (error) {
       console.error("Get system templates error:", error);
@@ -82,10 +96,24 @@ const TemplateController = () => {
         attributes: ["id", "name", "description", "image_url", "content", "user_id", "is_system", "createdAt", "updatedAt"]
       });
 
+      const TRIM_LENGTH = 300; // adjust as needed
+
+      const trimmedTemplates = templates.map(template => {
+        const data = template.toJSON();
+
+        return {
+          ...data,
+          content: data.content
+            ? data.content.substring(0, TRIM_LENGTH)
+            : ""
+        };
+      });
+  
+
       return res.status(200).json({
         success: true,
         msg: "User templates fetched successfully",
-        data: { templates }
+        data: { templates: trimmedTemplates }
       });
     } catch (error) {
       console.error("Get user templates error:", error);

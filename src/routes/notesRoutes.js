@@ -35,6 +35,7 @@ const {
   deleteNoteImage,
   getNoteWithStack,
   getNoteContent,
+  getNotesName,
 } = require("../controllers/NoteController");
 
 // Apply JWT middleware to all routes
@@ -45,6 +46,7 @@ router.use(jwtVerify);
 // ==============================
 router.post("/", createNote);
 router.get("/getAllNotes", getAllNotes); // notes?tag_id={tagId}&stack_id={stackId}&notebook_id={notebookId}
+router.get("/getNotesName", getNotesName); // Get notes with id and title only
 router.post("/getNoteById", getNoteById);
 router.put("/:id", updateNoteMeta);
 router.delete("/:id", deleteNote);

@@ -10,6 +10,82 @@ const Task = require("../models/task");
 const { Op } = require("sequelize");
 
 const calendarController = () => {
+  // Helper function to format task for calendar response
+  const formatTaskForCalendar = (taskData, includeDetails = false) => {
+    // Build start and end datetime from start_date/start_time and end_time
+    let startDateTime = null;
+    let endDateTime = null;
+    let startDateStr = null;
+    let startTimeStr = null;
+    let endTimeStr = null;
+
+    if (taskData.start_date) {
+      startDateStr = taskData.start_date instanceof Date 
+        ? taskData.start_date.toISOString().split('T')[0]
+        : taskData.start_date;
+      
+      if (taskData.start_time) {
+        startTimeStr = typeof taskData.start_time === 'string' 
+          ? taskData.start_time 
+          : taskData.start_time.toString();
+        // Combine date and time
+        const [hours, minutes, seconds] = startTimeStr.split(':');
+        startDateTime = new Date(`${startDateStr}T${hours}:${minutes}:${seconds || '00'}`);
+      } else {
+        startDateTime = new Date(`${startDateStr}T00:00:00`);
+      }
+
+      // Calculate end datetime from start_date and end_time
+      if (taskData.end_time) {
+        endTimeStr = typeof taskData.end_time === 'string' 
+          ? taskData.end_time 
+          : taskData.end_time.toString();
+        const [hours, minutes, seconds] = endTimeStr.split(':');
+        endDateTime = new Date(`${startDateStr}T${hours}:${minutes}:${seconds || '00'}`);
+      } else if (startDateTime) {
+        // Default end time to 1 hour after start if not specified
+        endDateTime = new Date(startDateTime);
+        endDateTime.setHours(endDateTime.getHours() + 1);
+        endTimeStr = startTimeStr || "01:00:00";
+      }
+    }
+
+    const isOverdue = startDateTime && new Date(startDateTime) < new Date() && !taskData.completed;
+    const allDay = !taskData.start_time && !taskData.end_time;
+
+    const baseItem = {
+      id: `task_${taskData.id}`,
+      type: "task",
+      title: taskData.label,
+      start: startDateTime ? startDateTime.toISOString() : null,
+      end: endDateTime ? endDateTime.toISOString() : null,
+      allDay: allDay,
+      start_date: startDateStr,
+      start_time: startTimeStr,
+      end_time: endTimeStr,
+      completed: taskData.completed || false,
+      color: taskData.completed
+        ? "#9e9e9e"
+        : isOverdue
+        ? "#f44336"
+        : taskData.priority === "high"
+        ? "#ff5722"
+        : "#ffc107",
+      sourceId: taskData.id,
+    };
+
+    if (includeDetails) {
+      return {
+        ...baseItem,
+        description: taskData.description || null,
+        priority: taskData.priority || null,
+        flagged: taskData.flagged || false,
+      };
+    }
+
+    return baseItem;
+  };
+
   /**
    * @description Get calendar events by date (supports day/week/month views)
    * @param req.user - User from authentication middleware
@@ -82,11 +158,11 @@ const calendarController = () => {
 
       const items = [];
 
-      // Fetch tasks with due_date in the date range
+      // Fetch tasks with start_date in the date range
       const tasks = await Task.findAll({
         where: {
-          due_date: {
-            [Op.between]: [startDate, endDate],
+          start_date: {
+            [Op.between]: [startDate.toISOString().split('T')[0], endDate.toISOString().split('T')[0]],
           },
         },
         include: [
@@ -101,37 +177,23 @@ const calendarController = () => {
             attributes: ["id", "title"],
           },
         ],
-        attributes: ["id", "label", "due_date", "completed", "priority", "flagged"],
-        order: [["due_date", "ASC"]],
+        attributes: [
+          "id",
+          "label",
+          "start_date",
+          "start_time",
+          "end_time",
+          "completed",
+          "priority",
+          "flagged",
+        ],
+        order: [["start_date", "ASC"]],
       });
 
       // Map tasks to calendar items
       tasks.forEach((task) => {
         const taskData = task.toJSON();
-        const isOverdue = taskData.due_date && new Date(taskData.due_date) < new Date() && !taskData.completed;
-        
-        // Calculate end time (1 hour after start, or null if allDay)
-        const startTime = new Date(taskData.due_date);
-        const endTime = new Date(startTime);
-        endTime.setHours(endTime.getHours() + 1);
-
-        items.push({
-          id: `task_${taskData.id}`,
-          type: "task",
-          title: taskData.label,
-          start: startTime.toISOString(),
-          end: endTime.toISOString(),
-          allDay: false,
-          completed: taskData.completed || false,
-          color: taskData.completed
-            ? "#9e9e9e" // grey if completed
-            : isOverdue
-            ? "#f44336" // red if overdue
-            : taskData.priority === "high"
-            ? "#ff5722" // orange-red for high priority
-            : "#ffc107", // default yellow for tasks
-          sourceId: taskData.id,
-        });
+        items.push(formatTaskForCalendar(taskData));
       });
 
       // Fetch notes with created_at, updated_at, or last_modified in the date range
@@ -234,7 +296,16 @@ const calendarController = () => {
             attributes: ["id", "title"],
           },
         ],
-        attributes: ["id", "label", "due_date", "completed", "priority", "flagged"],
+        attributes: [
+          "id",
+          "label",
+          "start_date",
+          "start_time",
+          "end_time",
+          "completed",
+          "priority",
+          "flagged",
+        ],
       });
 
       if (!task) {
@@ -245,30 +316,7 @@ const calendarController = () => {
       }
 
       const taskData = task.toJSON();
-      const isOverdue = taskData.due_date && new Date(taskData.due_date) < new Date() && !taskData.completed;
-      
-      // Calculate end time (1 hour after start, or null if allDay)
-      const startTime = new Date(taskData.due_date);
-      const endTime = new Date(startTime);
-      endTime.setHours(endTime.getHours() + 1);
-
-      const item = {
-        id: `task_${taskData.id}`,
-        type: "task",
-        title: taskData.label,
-        start: startTime.toISOString(),
-        end: endTime.toISOString(),
-        allDay: false,
-        completed: taskData.completed || false,
-        color: taskData.completed
-          ? "#9e9e9e" // grey if completed
-          : isOverdue
-          ? "#f44336" // red if overdue
-          : taskData.priority === "high"
-          ? "#ff5722" // orange-red for high priority
-          : "#ffc107", // default yellow for tasks
-        sourceId: taskData.id,
-      };
+      const item = formatTaskForCalendar(taskData);
 
       return res.status(200).json({
         success: true,
@@ -334,11 +382,11 @@ const calendarController = () => {
 
       const items = [];
 
-      // Fetch tasks with due_date in the date range
+      // Fetch tasks with start_date in the date range
       const tasks = await Task.findAll({
         where: {
-          due_date: {
-            [Op.between]: [startDate, endDate],
+          start_date: {
+            [Op.between]: [startDate.toISOString().split('T')[0], endDate.toISOString().split('T')[0]],
           },
         },
         include: [
@@ -353,37 +401,23 @@ const calendarController = () => {
             attributes: ["id", "title"],
           },
         ],
-        attributes: ["id", "label", "due_date", "completed", "priority", "flagged"],
-        order: [["due_date", "ASC"]],
+        attributes: [
+          "id",
+          "label",
+          "start_date",
+          "start_time",
+          "end_time",
+          "completed",
+          "priority",
+          "flagged",
+        ],
+        order: [["start_date", "ASC"]],
       });
 
       // Map tasks to calendar items
       tasks.forEach((task) => {
         const taskData = task.toJSON();
-        const isOverdue = taskData.due_date && new Date(taskData.due_date) < new Date() && !taskData.completed;
-        
-        // Calculate end time (1 hour after start, or null if allDay)
-        const startTime = new Date(taskData.due_date);
-        const endTime = new Date(startTime);
-        endTime.setHours(endTime.getHours() + 1);
-
-        items.push({
-          id: `task_${taskData.id}`,
-          type: "task",
-          title: taskData.label,
-          start: startTime.toISOString(),
-          end: endTime.toISOString(),
-          allDay: false,
-          completed: taskData.completed || false,
-          color: taskData.completed
-            ? "#9e9e9e" // grey if completed
-            : isOverdue
-            ? "#f44336" // red if overdue
-            : taskData.priority === "high"
-            ? "#ff5722" // orange-red for high priority
-            : "#ffc107", // default yellow for tasks
-          sourceId: taskData.id,
-        });
+        items.push(formatTaskForCalendar(taskData));
       });
 
       // Fetch notes with created_at, updated_at, or last_modified in the date range
@@ -448,7 +482,7 @@ const calendarController = () => {
   };
 
   /**
-   * @description Get all calendar items (tasks with due_date and notes)
+   * @description Get all calendar items (tasks with start_date and notes)
    * @param req.user - User from authentication middleware
    * @returns all calendar items (tasks and notes)
    */
@@ -463,11 +497,20 @@ const calendarController = () => {
 
       const userId = req.user.id;
 
-      // Fetch tasks that have a due_date
+      // Fetch tasks that have a start_date
       const tasks = await Task.findAll({
-        attributes: ["id", "label", "due_date", "completed", "priority", "flagged"],
+        attributes: [
+          "id",
+          "label",
+          "start_date",
+          "start_time",
+          "end_time",
+          "completed",
+          "priority",
+          "flagged",
+        ],
         where: {
-          due_date: { [Op.ne]: null }, // only tasks with due date
+          start_date: { [Op.ne]: null },
         },
         include: [
           {
@@ -478,7 +521,7 @@ const calendarController = () => {
             required: true,
           },
         ],
-        order: [["due_date", "ASC"]],
+        order: [["start_date", "ASC"]],
       });
 
       // Fetch notes (all non-trashed notes)
@@ -497,30 +540,7 @@ const calendarController = () => {
       // Map tasks
       tasks.forEach((task) => {
         const taskData = task.toJSON();
-        const isOverdue = taskData.due_date && new Date(taskData.due_date) < new Date() && !taskData.completed;
-
-        // Calculate end time (1 hour after start)
-        const startTime = new Date(taskData.due_date);
-        const endTime = new Date(startTime);
-        endTime.setHours(endTime.getHours() + 1);
-
-        items.push({
-          id: `task_${taskData.id}`,
-          type: "task",
-          title: taskData.label,
-          start: startTime.toISOString(),
-          end: endTime.toISOString(),
-          allDay: false,
-          completed: taskData.completed || false,
-          color: taskData.completed
-            ? "#9e9e9e" // grey if completed
-            : isOverdue
-            ? "#f44336" // red if overdue
-            : taskData.priority === "high"
-            ? "#ff5722" // orange-red for high priority
-            : "#ffc107", // default yellow for tasks
-          sourceId: taskData.id,
-        });
+        items.push(formatTaskForCalendar(taskData));
       });
 
       // Map notes
@@ -576,7 +596,7 @@ const calendarController = () => {
       }
 
       const { id } = req.params;
-      const { start, end, allDay } = req.body;
+      const { start_date, start_time, end_time, allDay } = req.body;
 
       if (!id) {
         return res.status(400).json({
@@ -585,7 +605,7 @@ const calendarController = () => {
         });
       }
 
-      if (!start) {
+      if (!start_date) {
         return res.status(400).json({
           success: false,
           msg: "Start date is required",
@@ -607,7 +627,16 @@ const calendarController = () => {
             attributes: ["id", "title"],
           },
         ],
-        attributes: ["id", "label", "due_date", "completed", "priority", "flagged"],
+        attributes: [
+          "id",
+          "label",
+          "start_date",
+          "start_time",
+          "end_time",
+          "completed",
+          "priority",
+          "flagged",
+        ],
       });
 
       if (!task) {
@@ -617,23 +646,23 @@ const calendarController = () => {
         });
       }
 
-      // Update task due_date from start
-      const startDate = new Date(start);
-      if (isNaN(startDate.getTime())) {
-        return res.status(400).json({
-          success: false,
-          msg: "Invalid start date format",
-        });
+      // Prepare update data
+      const updateData = {
+        start_date: start_date || null,
+      };
+
+      // Handle time fields based on allDay flag
+      if (allDay === true || allDay === "true") {
+        updateData.start_time = null;
+        updateData.end_time = null;
+      } else {
+        updateData.start_time = start_time || null;
+        updateData.end_time = end_time || null;
       }
 
-      await Task.update(
-        {
-          due_date: startDate,
-        },
-        {
-          where: { id },
-        }
-      );
+      await Task.update(updateData, {
+        where: { id },
+      });
 
       // Fetch updated task
       const updatedTask = await Task.findOne({
@@ -646,38 +675,20 @@ const calendarController = () => {
             attributes: ["id", "title"],
           },
         ],
-        attributes: ["id", "label", "due_date", "completed", "priority", "flagged"],
+        attributes: [
+          "id",
+          "label",
+          "start_date",
+          "start_time",
+          "end_time",
+          "completed",
+          "priority",
+          "flagged",
+        ],
       });
 
       const taskData = updatedTask.toJSON();
-      const isOverdue = taskData.due_date && new Date(taskData.due_date) < new Date() && !taskData.completed;
-
-      // Calculate end time
-      let endTime;
-      if (end) {
-        endTime = new Date(end);
-      } else {
-        endTime = new Date(startDate);
-        endTime.setHours(endTime.getHours() + 1);
-      }
-
-      const item = {
-        id: `task_${taskData.id}`,
-        type: "task",
-        title: taskData.label,
-        start: startDate.toISOString(),
-        end: endTime.toISOString(),
-        allDay: allDay === true || allDay === "true" || false,
-        completed: taskData.completed || false,
-        color: taskData.completed
-          ? "#9e9e9e" // grey if completed
-          : isOverdue
-          ? "#f44336" // red if overdue
-          : taskData.priority === "high"
-          ? "#ff5722" // orange-red for high priority
-          : "#ffc107", // default yellow for tasks
-        sourceId: taskData.id,
-      };
+      const item = formatTaskForCalendar(taskData);
 
       return res.status(200).json({
         success: true,

@@ -16,7 +16,7 @@ const Task = database.define(
     },
     note_id: {
       type: Sequelize.UUID,
-      allowNull: false,
+      allowNull: true,
       comment: "Parent note ID (FK to notes.id)",
       references: {
         model: TABLE_NAME_NOTES,
@@ -26,50 +26,49 @@ const Task = database.define(
     label: {
       type: Sequelize.STRING(255),
       allowNull: false,
-      comment: "Task label/description",
     },
     description: {
       type: Sequelize.TEXT,
       allowNull: true,
-      comment: "Task detailed description",
     },
-    due_date: {
-      type: Sequelize.DATE,
+    start_date: {
+      type: Sequelize.DATEONLY,
       allowNull: true,
-      comment: "Task due date",
+    },
+    start_time: {
+      type: Sequelize.TIME,
+      allowNull: true,
+    },
+    end_time: {
+      type: Sequelize.TIME,
+      allowNull: true,
     },
     reminder: {
       type: Sequelize.STRING(255),
       allowNull: true,
-      comment: "Task reminder setting",
     },
     assigned_to: {
       type: Sequelize.STRING(255),
       allowNull: true,
-      comment: "Task assignee",
     },
     priority: {
       type: Sequelize.STRING(50),
       allowNull: true,
-      comment: "Task priority (low, medium, high)",
     },
     flagged: {
       type: Sequelize.BOOLEAN,
       allowNull: false,
       defaultValue: false,
-      comment: "Task flagged status",
     },
     completed: {
       type: Sequelize.BOOLEAN,
       allowNull: false,
       defaultValue: false,
-      comment: "Task completion status",
     },
     sort_order: {
       type: Sequelize.INTEGER,
       allowNull: false,
       defaultValue: 0,
-      comment: "Display order within note",
     },
     created_at: {
       type: Sequelize.DATE,

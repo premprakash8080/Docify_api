@@ -2306,6 +2306,52 @@ const refactorCreateNote = async (req, res) => {
     }
   };
 
+  /**
+   * @description Get all note names (id and title only) for the authenticated user
+   * @param req.user - User from authentication middleware
+   * @returns list of notes with id and title only
+   */
+  const getNotesName = async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          msg: "User not authenticated",
+        });
+      }
+
+      // Get all notes for the user with only id and title
+      const notes = await Note.findAll({
+        where: {
+          user_id: req.user.id,
+          trashed: false, // Exclude trashed notes
+        },
+        attributes: ["id", "title"],
+        order: [["title", "ASC"]],
+      });
+
+      // Format response
+      const formattedNotes = notes.map(note => ({
+        id: note.id,
+        title: note.title || "Untitled",
+      }));
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          notes: formattedNotes,
+        },
+      });
+    } catch (error) {
+      console.error("Get notes name error:", error);
+      return res.status(500).json({
+        success: false,
+        msg: "Internal server error",
+        error: error.message,
+      });
+    }
+  };
+
   return {
     createNote,
     getAllNotes,
@@ -2331,6 +2377,7 @@ const refactorCreateNote = async (req, res) => {
     deleteNoteImage,
     getNoteWithStack,
     getCalendarNoteDetails,
+    getNotesName,
   };
 };
 
