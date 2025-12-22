@@ -13,6 +13,7 @@ exports.set_routes = (app) => {
   const calendar = require("../routes/calendarRoutes");
   const templates = require("../routes/templateRoutes");
   const colors = require("../routes/colorsRoute");
+  const scratchPad = require("../routes/scratchPadRoutes");
   
   app.use("/api/users", users);
   app.use("/api/notes", notes);
@@ -24,4 +25,5 @@ exports.set_routes = (app) => {
   app.use("/api/calendar", calendar);
   app.use("/api/templates", templates);
   app.use("/api/colors", colors);
+  app.use("/api/scratch-pad", scratchPad);
 };

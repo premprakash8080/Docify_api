@@ -639,6 +639,73 @@ const TaskController = () => {
     }
   };
 
+  /**
+   * @description Get task details for calendar view
+   * @param req.user - User from authentication middleware
+   * @param req.query.id - Task ID
+   * @returns task details
+   */
+  const getCalendarTaskDetails = async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          msg: "User not authenticated",
+        });
+      }
+
+      const { id } = req.query;
+
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          msg: "Task ID is required",
+        });
+      }
+
+      // Find task first
+      const task = await Task.findOne({
+        where: { id },
+      });
+
+      if (!task) {
+        return res.status(404).json({
+          success: false,
+          msg: "Task not found",
+        });
+      }
+
+      // Verify note belongs to user
+      const note = await Note.findOne({
+        where: {
+          id: task.note_id,
+          user_id: req.user.id,
+        },
+      });
+
+      if (!note) {
+        return res.status(403).json({
+          success: false,
+          msg: "Access denied: Task does not belong to user",
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          task,
+        },
+      });
+    } catch (error) {
+      console.error("Get calendar task details error:", error);
+      return res.status(500).json({
+        success: false,
+        msg: "Internal server error",
+        error: error.message,
+      });
+    }
+  };
+
   return {
     createTask,
     getTaskById,
@@ -648,6 +715,7 @@ const TaskController = () => {
     reorderTasks,
     getNoteTasks,
     getAllTasks,
+    getCalendarTaskDetails,
   };
 };
 

@@ -10,6 +10,7 @@ const tableNames = {
   TABLE_NAME_USER_SETTINGS: "user_settings",
   TABLE_NAME_COLORS: "colors",
   TABLE_NAME_TEMPLATES: "templates",
+  TABLE_NAME_SCRATCH_PAD: "scratch_pad",
 };
 
 module.exports = tableNames;

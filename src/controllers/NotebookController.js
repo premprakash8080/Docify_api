@@ -884,7 +884,7 @@ const NotebookController = () => {
    * @param req.body.trashed - Filter by trashed status (optional)
    * @returns list of notes in the notebook
    */
-  const getNotebookNotes = async (req, res) => {
+  const getNotebookNotesById = async (req, res) => {
     try {
       if (!req.user) {
         return res.status(401).json({
@@ -893,7 +893,7 @@ const NotebookController = () => {
         });
       }
 
-      const { id } = req.body;
+      const { id, archived, trashed } = req.query;
 
       if (!id) {
         return res.status(400).json({
@@ -901,7 +901,6 @@ const NotebookController = () => {
           msg: "Notebook ID is required",
         });
       }
-      const { archived, trashed } = req.body || {};
 
       // Verify notebook belongs to user
       const notebook = await Notebook.findOne({
@@ -1056,7 +1055,7 @@ const NotebookController = () => {
     reorderNotebooks,
     moveNotebookToStack,
     removeNotebookFromStack,
-    getNotebookNotes,
+    getNotebookNotesById,
     getNotebooksWithStacks,
   };
 };

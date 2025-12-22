@@ -13,9 +13,9 @@ const calendarController = () => {
   /**
    * @description Get calendar events by date (supports day/week/month views)
    * @param req.user - User from authentication middleware
-   * @param req.body.date - Date string (ISO format or YYYY-MM-DD)
-   * @param req.body.view - View type: 'day', 'week', or 'month' (optional, defaults to 'day')
-   * @returns calendar events (notes) for the specified date/view
+   * @param req.query.date - Date string (ISO format or YYYY-MM-DD)
+   * @param req.query.view - View type: 'day', 'week', or 'month' (optional, defaults to 'day')
+   * @returns calendar events (tasks and notes) for the specified date/view
    */
   const getCalendarEventsByDate = async (req, res) => {
     try {
@@ -26,7 +26,7 @@ const calendarController = () => {
         });
       }
 
-      const { date, view = "day" } = req.body;
+      const { date, view = "day" } = req.query;
 
       if (!date) {
         return res.status(400).json({
@@ -80,150 +80,109 @@ const calendarController = () => {
           });
       }
 
-      // Get notes with relationships where created_at, updated_at, or last_modified falls within the date range
-      // Exclude trashed notes
+      const items = [];
+
+      // Fetch tasks with due_date in the date range
+      const tasks = await Task.findAll({
+        where: {
+          due_date: {
+            [Op.between]: [startDate, endDate],
+          },
+        },
+        include: [
+          {
+            model: Note,
+            as: "note",
+            where: {
+              user_id: req.user.id,
+              trashed: false,
+            },
+            required: true,
+            attributes: ["id", "title"],
+          },
+        ],
+        attributes: ["id", "label", "due_date", "completed", "priority", "flagged"],
+        order: [["due_date", "ASC"]],
+      });
+
+      // Map tasks to calendar items
+      tasks.forEach((task) => {
+        const taskData = task.toJSON();
+        const isOverdue = taskData.due_date && new Date(taskData.due_date) < new Date() && !taskData.completed;
+        
+        // Calculate end time (1 hour after start, or null if allDay)
+        const startTime = new Date(taskData.due_date);
+        const endTime = new Date(startTime);
+        endTime.setHours(endTime.getHours() + 1);
+
+        items.push({
+          id: `task_${taskData.id}`,
+          type: "task",
+          title: taskData.label,
+          start: startTime.toISOString(),
+          end: endTime.toISOString(),
+          allDay: false,
+          completed: taskData.completed || false,
+          color: taskData.completed
+            ? "#9e9e9e" // grey if completed
+            : isOverdue
+            ? "#f44336" // red if overdue
+            : taskData.priority === "high"
+            ? "#ff5722" // orange-red for high priority
+            : "#ffc107", // default yellow for tasks
+          sourceId: taskData.id,
+        });
+      });
+
+      // Fetch notes with created_at, updated_at, or last_modified in the date range
       const notes = await Note.findAll({
         where: {
           user_id: req.user.id,
           trashed: false,
-          [Sequelize.Op.or]: [
+          [Op.or]: [
             {
               created_at: {
-                [Sequelize.Op.between]: [startDate, endDate],
+                [Op.between]: [startDate, endDate],
               },
             },
             {
               updated_at: {
-                [Sequelize.Op.between]: [startDate, endDate],
+                [Op.between]: [startDate, endDate],
               },
             },
             {
               last_modified: {
-                [Sequelize.Op.between]: [startDate, endDate],
+                [Op.between]: [startDate, endDate],
               },
             },
           ],
         },
-        include: [
-          {
-            model: Notebook,
-            as: "notebook",
-            required: false,
-            include: [
-              {
-                model: Stack,
-                as: "stack",
-                required: false,
-                include: [
-                  {
-                    model: Color,
-                    as: "color",
-                    attributes: ["id", "name", "hex_code"],
-                    required: false,
-                  },
-                ],
-                attributes: ["id", "name", "description", "color_id"],
-              },
-              {
-                model: Color,
-                as: "color",
-                attributes: ["id", "name", "hex_code"],
-                required: false,
-              },
-            ],
-            attributes: ["id", "name", "description", "color_id", "stack_id"],
-          },
-          {
-            model: User,
-            as: "user",
-            attributes: ["id", "email", "display_name"],
-            required: false,
-          },
-        ],
+        attributes: ["id", "title", "created_at", "updated_at"],
         order: [["created_at", "DESC"]],
       });
 
-      // Build events with aggregated counts
-      const events = await Promise.all(
-        notes.map(async (note) => {
-          const noteData = note.toJSON();
+      // Map notes to calendar items
+      notes.forEach((note) => {
+        const noteData = note.toJSON();
+        const displayDate = noteData.updated_at || noteData.created_at;
 
-          // Get aggregated counts
-          const tagCount = await NoteTag.count({
-            where: { note_id: note.id },
-          });
-
-          const fileCount = await File.count({
-            where: { note_id: note.id },
-          });
-
-          const taskStats = await Task.findAll({
-            where: { note_id: note.id },
-            attributes: [
-              [Sequelize.fn("COUNT", Sequelize.col("id")), "task_count"],
-              [
-                Sequelize.fn(
-                  "SUM",
-                  Sequelize.literal("CASE WHEN completed = 1 THEN 1 ELSE 0 END")
-                ),
-                "completed_task_count",
-              ],
-            ],
-            raw: true,
-          });
-
-          const taskCount = taskStats[0]?.task_count || 0;
-          const completedTaskCount = taskStats[0]?.completed_task_count || 0;
-
-          return {
-            id: noteData.id,
-            user_id: noteData.user_id,
-            notebook_id: noteData.notebook_id,
-            firebase_document_id: noteData.firebase_document_id,
-            title: noteData.title,
-            pinned: noteData.pinned,
-            archived: noteData.archived,
-            trashed: noteData.trashed,
-            version: noteData.version,
-            synced: noteData.synced,
-            created_at: noteData.created_at,
-            updated_at: noteData.updated_at,
-            last_modified: noteData.last_modified,
-            // Notebook information
-            notebook_name: noteData.notebook?.name || null,
-            notebook_description: noteData.notebook?.description || null,
-            notebook_color_id: noteData.notebook?.color_id || null,
-            notebook_color_hex: noteData.notebook?.color?.hex_code || null,
-            notebook_color_name: noteData.notebook?.color?.name || null,
-            // Stack information
-            stack_id: noteData.notebook?.stack?.id || null,
-            stack_name: noteData.notebook?.stack?.name || null,
-            stack_description: noteData.notebook?.stack?.description || null,
-            stack_color_id: noteData.notebook?.stack?.color_id || null,
-            stack_color_hex: noteData.notebook?.stack?.color?.hex_code || null,
-            stack_color_name: noteData.notebook?.stack?.color?.name || null,
-            // User information
-            user_email: noteData.user?.email || null,
-            user_display_name: noteData.user?.display_name || null,
-            // Aggregated counts
-            tag_count: tagCount,
-            file_count: fileCount,
-            task_count: parseInt(taskCount) || 0,
-            completed_task_count: parseInt(completedTaskCount) || 0,
-            type: "note",
-          };
-        })
-      );
+        items.push({
+          id: `note_${noteData.id}`,
+          type: "note",
+          title: noteData.title || "Untitled Note",
+          start: displayDate ? new Date(displayDate).toISOString() : null,
+          end: null,
+          allDay: true,
+          completed: false,
+          color: "#00ff00", // green for notes
+          sourceId: noteData.id,
+        });
+      });
 
       return res.status(200).json({
         success: true,
         data: {
-          date: date,
-          view: view,
-          startDate: startDate,
-          endDate: endDate,
-          events,
-          count: events.length,
+          items,
         },
       });
     } catch (error) {
@@ -237,10 +196,10 @@ const calendarController = () => {
   };
 
   /**
-   * @description Get a specific calendar event by ID
+   * @description Get a specific calendar event by ID (task ID primary key)
    * @param req.user - User from authentication middleware
-   * @param req.body.id - Note ID
-   * @returns calendar event (note) details
+   * @param req.params.id - Task ID (primary key)
+   * @returns calendar event (task) details
    */
   const getCalendarEventById = async (req, res) => {
     try {
@@ -251,7 +210,7 @@ const calendarController = () => {
         });
       }
 
-      const { id } = req.body;
+      const { id } = req.params;
 
       if (!id) {
         return res.status(400).json({
@@ -260,129 +219,61 @@ const calendarController = () => {
         });
       }
 
-      // Get note with relationships and aggregated counts
-      const note = await Note.findOne({
-        where: {
-          id,
-          user_id: req.user.id,
-          trashed: false,
-        },
+      // Get task with note relationship
+      const task = await Task.findOne({
+        where: { id },
         include: [
           {
-            model: Notebook,
-            as: "notebook",
-            required: false,
-            include: [
-              {
-                model: Stack,
-                as: "stack",
-                required: false,
-                include: [
-                  {
-                    model: Color,
-                    as: "color",
-                    attributes: ["id", "name", "hex_code"],
-                    required: false,
-                  },
-                ],
-                attributes: ["id", "name", "description", "color_id"],
-              },
-              {
-                model: Color,
-                as: "color",
-                attributes: ["id", "name", "hex_code"],
-                required: false,
-              },
-            ],
-            attributes: ["id", "name", "description", "color_id", "stack_id"],
-          },
-          {
-            model: User,
-            as: "user",
-            attributes: ["id", "email", "display_name"],
-            required: false,
+            model: Note,
+            as: "note",
+            where: {
+              user_id: req.user.id,
+              trashed: false,
+            },
+            required: true,
+            attributes: ["id", "title"],
           },
         ],
+        attributes: ["id", "label", "due_date", "completed", "priority", "flagged"],
       });
 
-      if (!note) {
+      if (!task) {
         return res.status(404).json({
           success: false,
           msg: "Calendar event not found",
         });
       }
 
-      const noteData = note.toJSON();
+      const taskData = task.toJSON();
+      const isOverdue = taskData.due_date && new Date(taskData.due_date) < new Date() && !taskData.completed;
+      
+      // Calculate end time (1 hour after start, or null if allDay)
+      const startTime = new Date(taskData.due_date);
+      const endTime = new Date(startTime);
+      endTime.setHours(endTime.getHours() + 1);
 
-      // Get aggregated counts
-      const tagCount = await NoteTag.count({
-        where: { note_id: note.id },
-      });
-
-      const fileCount = await File.count({
-        where: { note_id: note.id },
-      });
-
-      const taskStats = await Task.findAll({
-        where: { note_id: note.id },
-        attributes: [
-          [Sequelize.fn("COUNT", Sequelize.col("id")), "task_count"],
-          [
-            Sequelize.fn(
-              "SUM",
-              Sequelize.literal("CASE WHEN completed = 1 THEN 1 ELSE 0 END")
-            ),
-            "completed_task_count",
-          ],
-        ],
-        raw: true,
-      });
-
-      const taskCount = taskStats[0]?.task_count || 0;
-      const completedTaskCount = taskStats[0]?.completed_task_count || 0;
-
-      const event = {
-        id: noteData.id,
-        user_id: noteData.user_id,
-        notebook_id: noteData.notebook_id,
-        firebase_document_id: noteData.firebase_document_id,
-        title: noteData.title,
-        pinned: noteData.pinned,
-        archived: noteData.archived,
-        trashed: noteData.trashed,
-        version: noteData.version,
-        synced: noteData.synced,
-        created_at: noteData.created_at,
-        updated_at: noteData.updated_at,
-        last_modified: noteData.last_modified,
-        // Notebook information
-        notebook_name: noteData.notebook?.name || null,
-        notebook_description: noteData.notebook?.description || null,
-        notebook_color_id: noteData.notebook?.color_id || null,
-        notebook_color_hex: noteData.notebook?.color?.hex_code || null,
-        notebook_color_name: noteData.notebook?.color?.name || null,
-        // Stack information
-        stack_id: noteData.notebook?.stack?.id || null,
-        stack_name: noteData.notebook?.stack?.name || null,
-        stack_description: noteData.notebook?.stack?.description || null,
-        stack_color_id: noteData.notebook?.stack?.color_id || null,
-        stack_color_hex: noteData.notebook?.stack?.color?.hex_code || null,
-        stack_color_name: noteData.notebook?.stack?.color?.name || null,
-        // User information
-        user_email: noteData.user?.email || null,
-        user_display_name: noteData.user?.display_name || null,
-        // Aggregated counts
-        tag_count: tagCount,
-        file_count: fileCount,
-        task_count: parseInt(taskCount) || 0,
-        completed_task_count: parseInt(completedTaskCount) || 0,
-        type: "note",
+      const item = {
+        id: `task_${taskData.id}`,
+        type: "task",
+        title: taskData.label,
+        start: startTime.toISOString(),
+        end: endTime.toISOString(),
+        allDay: false,
+        completed: taskData.completed || false,
+        color: taskData.completed
+          ? "#9e9e9e" // grey if completed
+          : isOverdue
+          ? "#f44336" // red if overdue
+          : taskData.priority === "high"
+          ? "#ff5722" // orange-red for high priority
+          : "#ffc107", // default yellow for tasks
+        sourceId: taskData.id,
       };
 
       return res.status(200).json({
         success: true,
         data: {
-          event,
+          item,
         },
       });
     } catch (error) {
@@ -398,9 +289,9 @@ const calendarController = () => {
   /**
    * @description Get calendar events within a date range
    * @param req.user - User from authentication middleware
-   * @param req.body.start - Start date string (ISO format or YYYY-MM-DD)
-   * @param req.body.end - End date string (ISO format or YYYY-MM-DD)
-   * @returns calendar events (notes) within the date range
+   * @param req.query.startDate - Start date string (ISO format or YYYY-MM-DD)
+   * @param req.query.endDate - End date string (ISO format or YYYY-MM-DD)
+   * @returns calendar events (tasks and notes) within the date range
    */
   const getCalendarEventsByRange = async (req, res) => {
     try {
@@ -411,7 +302,7 @@ const calendarController = () => {
         });
       }
 
-      const { start, end } = req.body;
+      const { startDate: start, endDate: end } = req.query;
 
       if (!start || !end) {
         return res.status(400).json({
@@ -441,148 +332,109 @@ const calendarController = () => {
       startDate.setHours(0, 0, 0, 0);
       endDate.setHours(23, 59, 59, 999);
 
-      // Get notes with relationships where created_at, updated_at, or last_modified falls within the date range
-      // Exclude trashed notes
+      const items = [];
+
+      // Fetch tasks with due_date in the date range
+      const tasks = await Task.findAll({
+        where: {
+          due_date: {
+            [Op.between]: [startDate, endDate],
+          },
+        },
+        include: [
+          {
+            model: Note,
+            as: "note",
+            where: {
+              user_id: req.user.id,
+              trashed: false,
+            },
+            required: true,
+            attributes: ["id", "title"],
+          },
+        ],
+        attributes: ["id", "label", "due_date", "completed", "priority", "flagged"],
+        order: [["due_date", "ASC"]],
+      });
+
+      // Map tasks to calendar items
+      tasks.forEach((task) => {
+        const taskData = task.toJSON();
+        const isOverdue = taskData.due_date && new Date(taskData.due_date) < new Date() && !taskData.completed;
+        
+        // Calculate end time (1 hour after start, or null if allDay)
+        const startTime = new Date(taskData.due_date);
+        const endTime = new Date(startTime);
+        endTime.setHours(endTime.getHours() + 1);
+
+        items.push({
+          id: `task_${taskData.id}`,
+          type: "task",
+          title: taskData.label,
+          start: startTime.toISOString(),
+          end: endTime.toISOString(),
+          allDay: false,
+          completed: taskData.completed || false,
+          color: taskData.completed
+            ? "#9e9e9e" // grey if completed
+            : isOverdue
+            ? "#f44336" // red if overdue
+            : taskData.priority === "high"
+            ? "#ff5722" // orange-red for high priority
+            : "#ffc107", // default yellow for tasks
+          sourceId: taskData.id,
+        });
+      });
+
+      // Fetch notes with created_at, updated_at, or last_modified in the date range
       const notes = await Note.findAll({
         where: {
           user_id: req.user.id,
           trashed: false,
-          [Sequelize.Op.or]: [
+          [Op.or]: [
             {
               created_at: {
-                [Sequelize.Op.between]: [startDate, endDate],
+                [Op.between]: [startDate, endDate],
               },
             },
             {
               updated_at: {
-                [Sequelize.Op.between]: [startDate, endDate],
+                [Op.between]: [startDate, endDate],
               },
             },
             {
               last_modified: {
-                [Sequelize.Op.between]: [startDate, endDate],
+                [Op.between]: [startDate, endDate],
               },
             },
           ],
         },
-        include: [
-          {
-            model: Notebook,
-            as: "notebook",
-            required: false,
-            include: [
-              {
-                model: Stack,
-                as: "stack",
-                required: false,
-                include: [
-                  {
-                    model: Color,
-                    as: "color",
-                    attributes: ["id", "name", "hex_code"],
-                    required: false,
-                  },
-                ],
-                attributes: ["id", "name", "description", "color_id"],
-              },
-              {
-                model: Color,
-                as: "color",
-                attributes: ["id", "name", "hex_code"],
-                required: false,
-              },
-            ],
-            attributes: ["id", "name", "description", "color_id", "stack_id"],
-          },
-          {
-            model: User,
-            as: "user",
-            attributes: ["id", "email", "display_name"],
-            required: false,
-          },
-        ],
+        attributes: ["id", "title", "created_at", "updated_at"],
         order: [["created_at", "ASC"]],
       });
 
-      // Build events with aggregated counts
-      const events = await Promise.all(
-        notes.map(async (note) => {
-          const noteData = note.toJSON();
+      // Map notes to calendar items
+      notes.forEach((note) => {
+        const noteData = note.toJSON();
+        const displayDate = noteData.updated_at || noteData.created_at;
 
-          // Get aggregated counts
-          const tagCount = await NoteTag.count({
-            where: { note_id: note.id },
-          });
-
-          const fileCount = await File.count({
-            where: { note_id: note.id },
-          });
-
-          const taskStats = await Task.findAll({
-            where: { note_id: note.id },
-            attributes: [
-              [Sequelize.fn("COUNT", Sequelize.col("id")), "task_count"],
-              [
-                Sequelize.fn(
-                  "SUM",
-                  Sequelize.literal("CASE WHEN completed = 1 THEN 1 ELSE 0 END")
-                ),
-                "completed_task_count",
-              ],
-            ],
-            raw: true,
-          });
-
-          const taskCount = taskStats[0]?.task_count || 0;
-          const completedTaskCount = taskStats[0]?.completed_task_count || 0;
-
-          return {
-            id: noteData.id,
-            user_id: noteData.user_id,
-            notebook_id: noteData.notebook_id,
-            firebase_document_id: noteData.firebase_document_id,
-            title: noteData.title,
-            pinned: noteData.pinned,
-            archived: noteData.archived,
-            trashed: noteData.trashed,
-            version: noteData.version,
-            synced: noteData.synced,
-            created_at: noteData.created_at,
-            updated_at: noteData.updated_at,
-            last_modified: noteData.last_modified,
-            // Notebook information
-            notebook_name: noteData.notebook?.name || null,
-            notebook_description: noteData.notebook?.description || null,
-            notebook_color_id: noteData.notebook?.color_id || null,
-            notebook_color_hex: noteData.notebook?.color?.hex_code || null,
-            notebook_color_name: noteData.notebook?.color?.name || null,
-            // Stack information
-            stack_id: noteData.notebook?.stack?.id || null,
-            stack_name: noteData.notebook?.stack?.name || null,
-            stack_description: noteData.notebook?.stack?.description || null,
-            stack_color_id: noteData.notebook?.stack?.color_id || null,
-            stack_color_hex: noteData.notebook?.stack?.color?.hex_code || null,
-            stack_color_name: noteData.notebook?.stack?.color?.name || null,
-            // User information
-            user_email: noteData.user?.email || null,
-            user_display_name: noteData.user?.display_name || null,
-            // Aggregated counts
-            tag_count: tagCount,
-            file_count: fileCount,
-            task_count: parseInt(taskCount) || 0,
-            completed_task_count: parseInt(completedTaskCount) || 0,
-            type: "note",
-          };
-        })
-      );
+        items.push({
+          id: `note_${noteData.id}`,
+          type: "note",
+          title: noteData.title || "Untitled Note",
+          start: displayDate ? new Date(displayDate).toISOString() : null,
+          end: null,
+          allDay: true,
+          completed: false,
+          color: "#00ff00", // green for notes
+          sourceId: noteData.id,
+        });
+      });
 
       return res.status(200).json({
         success: true,
         data: {
-          startDate: startDate,
-          endDate: endDate,
-          events,
-          count: events.length,
+          items,
         },
       });
     } catch (error) {
@@ -595,79 +447,97 @@ const calendarController = () => {
     }
   };
 
+  /**
+   * @description Get all calendar items (tasks with due_date and notes)
+   * @param req.user - User from authentication middleware
+   * @returns all calendar items (tasks and notes)
+   */
   const getCalendarItems = async (req, res) => {
     try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          msg: "User not authenticated",
+        });
+      }
+
       const userId = req.user.id;
 
       // Fetch tasks that have a due_date
       const tasks = await Task.findAll({
-        attributes: ['id', 'label', 'due_date', 'completed', 'priority', 'flagged'],
+        attributes: ["id", "label", "due_date", "completed", "priority", "flagged"],
         where: {
           due_date: { [Op.ne]: null }, // only tasks with due date
         },
         include: [
           {
             model: Note,
-            as: 'note', // assuming you have association Task.belongsTo(Note)
+            as: "note",
             where: { user_id: userId },
-            attributes: ['id', 'title'],
+            attributes: ["id", "title"],
             required: true,
           },
         ],
-        order: [['due_date', 'ASC']],
+        order: [["due_date", "ASC"]],
       });
 
-      // Fetch pinned notes (treat as all-day calendar items)
-      const pinnedNotes = await Note.findAll({
+      // Fetch notes (all non-trashed notes)
+      const notes = await Note.findAll({
         where: {
           user_id: userId,
-          pinned: true,
-          trashed: false, // exclude trashed
+          trashed: false,
         },
-        attributes: ['id', 'title', 'created_at', 'updated_at'],
-        order: [['updated_at', 'DESC']],
+        attributes: ["id", "title", "created_at", "updated_at"],
+        order: [["updated_at", "DESC"]],
       });
 
       // Map to unified calendar format
       const items = [];
 
       // Map tasks
-      tasks.forEach(task => {
-        const isOverdue = task.due_date && task.due_date < new Date() && !task.completed;
+      tasks.forEach((task) => {
+        const taskData = task.toJSON();
+        const isOverdue = taskData.due_date && new Date(taskData.due_date) < new Date() && !taskData.completed;
+
+        // Calculate end time (1 hour after start)
+        const startTime = new Date(taskData.due_date);
+        const endTime = new Date(startTime);
+        endTime.setHours(endTime.getHours() + 1);
 
         items.push({
-          id: `task_${task.id}`,
-          type: 'task',
-          title: task.label,
-          start: task.due_date ? task.due_date.toISOString().split('T')[0] : null, // YYYY-MM-DD for allDay
-          end: null,
-          allDay: true,
-          completed: task.completed,
-          color: task.completed
-            ? '#9e9e9e'     // grey if completed
+          id: `task_${taskData.id}`,
+          type: "task",
+          title: taskData.label,
+          start: startTime.toISOString(),
+          end: endTime.toISOString(),
+          allDay: false,
+          completed: taskData.completed || false,
+          color: taskData.completed
+            ? "#9e9e9e" // grey if completed
             : isOverdue
-            ? '#f44336'     // red if overdue
-            : task.priority === 'high'
-            ? '#ff5722'     // orange-red for high priority
-            : '#ffc107',    // default yellow for tasks
-          sourceId: task.id,
+            ? "#f44336" // red if overdue
+            : taskData.priority === "high"
+            ? "#ff5722" // orange-red for high priority
+            : "#ffc107", // default yellow for tasks
+          sourceId: taskData.id,
         });
       });
 
-      // Map pinned notes
-      pinnedNotes.forEach(note => {
-        // Use updated_at or created_at as display date (or you can add a dedicated calendar_date later)
-        const displayDate = note.updated_at || note.created_at;
+      // Map notes
+      notes.forEach((note) => {
+        const noteData = note.toJSON();
+        const displayDate = noteData.updated_at || noteData.created_at;
 
         items.push({
-          id: `note_${note.id}`,
-          type: 'note',
-          title: note.title || 'Untitled Note',
-          start: displayDate.toISOString().split('T')[0],
+          id: `note_${noteData.id}`,
+          type: "note",
+          title: noteData.title || "Untitled Note",
+          start: displayDate ? new Date(displayDate).toISOString() : null,
           end: null,
           allDay: true,
-          color: '#4caf50', // green for pinned notes
-          sourceId: note.id,
+          completed: false,
+          color: "#00ff00", // green for notes
+          sourceId: noteData.id,
         });
       });
 
@@ -678,10 +548,149 @@ const calendarController = () => {
         },
       });
     } catch (error) {
-      console.error('Get calendar items error:', error);
+      console.error("Get calendar items error:", error);
       return res.status(500).json({
         success: false,
-        msg: 'Internal server error',
+        msg: "Internal server error",
+        error: error.message,
+      });
+    }
+  };
+
+  /**
+   * @description Update a calendar event (task) start/end dates
+   * @param req.user - User from authentication middleware
+   * @param req.params.id - Task ID (primary key)
+   * @param req.body.start - Start date/time (ISO format)
+   * @param req.body.end - End date/time (ISO format, optional)
+   * @param req.body.allDay - Whether event is all-day (optional)
+   * @returns updated calendar event
+   */
+  const updateCalendarEvent = async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          msg: "User not authenticated",
+        });
+      }
+
+      const { id } = req.params;
+      const { start, end, allDay } = req.body;
+
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          msg: "Event ID is required",
+        });
+      }
+
+      if (!start) {
+        return res.status(400).json({
+          success: false,
+          msg: "Start date is required",
+        });
+      }
+
+      // Get task and verify it belongs to user's note
+      const task = await Task.findOne({
+        where: { id },
+        include: [
+          {
+            model: Note,
+            as: "note",
+            where: {
+              user_id: req.user.id,
+              trashed: false,
+            },
+            required: true,
+            attributes: ["id", "title"],
+          },
+        ],
+        attributes: ["id", "label", "due_date", "completed", "priority", "flagged"],
+      });
+
+      if (!task) {
+        return res.status(404).json({
+          success: false,
+          msg: "Calendar event not found",
+        });
+      }
+
+      // Update task due_date from start
+      const startDate = new Date(start);
+      if (isNaN(startDate.getTime())) {
+        return res.status(400).json({
+          success: false,
+          msg: "Invalid start date format",
+        });
+      }
+
+      await Task.update(
+        {
+          due_date: startDate,
+        },
+        {
+          where: { id },
+        }
+      );
+
+      // Fetch updated task
+      const updatedTask = await Task.findOne({
+        where: { id },
+        include: [
+          {
+            model: Note,
+            as: "note",
+            required: true,
+            attributes: ["id", "title"],
+          },
+        ],
+        attributes: ["id", "label", "due_date", "completed", "priority", "flagged"],
+      });
+
+      const taskData = updatedTask.toJSON();
+      const isOverdue = taskData.due_date && new Date(taskData.due_date) < new Date() && !taskData.completed;
+
+      // Calculate end time
+      let endTime;
+      if (end) {
+        endTime = new Date(end);
+      } else {
+        endTime = new Date(startDate);
+        endTime.setHours(endTime.getHours() + 1);
+      }
+
+      const item = {
+        id: `task_${taskData.id}`,
+        type: "task",
+        title: taskData.label,
+        start: startDate.toISOString(),
+        end: endTime.toISOString(),
+        allDay: allDay === true || allDay === "true" || false,
+        completed: taskData.completed || false,
+        color: taskData.completed
+          ? "#9e9e9e" // grey if completed
+          : isOverdue
+          ? "#f44336" // red if overdue
+          : taskData.priority === "high"
+          ? "#ff5722" // orange-red for high priority
+          : "#ffc107", // default yellow for tasks
+        sourceId: taskData.id,
+      };
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          item,
+        },
+      });
+    } catch (error) {
+      console.error("Update calendar event error:", error);
+      return res.status(500).json({
+        success: false,
+        msg: "Internal server error",
+        error: error.message,
       });
     }
   };
@@ -691,6 +700,7 @@ const calendarController = () => {
     getCalendarEventById,
     getCalendarEventsByRange,
     getCalendarItems,
+    updateCalendarEvent,
   };
 };
 

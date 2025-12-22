@@ -10,7 +10,7 @@ const {
   reorderNotebooks,
   moveNotebookToStack,
   removeNotebookFromStack,
-  getNotebookNotes,
+  getNotebookNotesById,
   getNotebooksWithStacks
 } = require("../controllers/NotebookController");
 
@@ -41,6 +41,6 @@ router.delete("/stack/removeNotebookFromStack", removeNotebookFromStack);
 // ==============================
 // Notebook ↔ Notes
 // ==============================
-router.post("/:id/notes", getNotebookNotes);  // Get notebook notes (POST for body params)
+router.get("/getNotebookNotesById", getNotebookNotesById);  // Get notebook notes (GET with query params: ?id=...&archived=...&trashed=...)
 
 module.exports = router;

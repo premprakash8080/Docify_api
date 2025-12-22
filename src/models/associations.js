@@ -9,6 +9,7 @@ const NoteTag = require("./noteTag");
 const Color = require("./color");
 const UserSetting = require("./userSetting");
 const Template = require("./template");
+const ScratchPad = require("./scratchPad");
 
 // Centralized model associations for Evernote-style project
 
@@ -22,6 +23,9 @@ User.hasMany(Template, { foreignKey: "user_id", as: "templates" });
 // Each user has a single settings row
 User.hasOne(UserSetting, { foreignKey: "user_id", as: "settings" });
 UserSetting.belongsTo(User, { foreignKey: "user_id", as: "user" });
+// Each user has a single scratch pad
+User.hasOne(ScratchPad, { foreignKey: "user_id", as: "scratchPad" });
+ScratchPad.belongsTo(User, { foreignKey: "user_id", as: "user" });
 
 // Stack relationships
 Stack.hasMany(Notebook, { foreignKey: "stack_id", as: "notebooks" });
@@ -60,6 +64,7 @@ module.exports = {
   Color,
   UserSetting,
   Template,
+  ScratchPad,
 };
 
 

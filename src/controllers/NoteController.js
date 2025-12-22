@@ -2202,6 +2202,110 @@ const refactorCreateNote = async (req, res) => {
     }
   };
 
+  /**
+   * @description Get note details for calendar view
+   * @param req.user - User from authentication middleware
+   * @param req.query.id - Note ID
+   * @returns note details with content and tags
+   */
+  const getCalendarNoteDetails = async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          msg: "User not authenticated",
+        });
+      }
+
+      const { id } = req.query;
+
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          msg: "Note ID is required",
+        });
+      }
+
+      // Verify note exists and belongs to user, include tags
+      const note = await Note.findOne({
+        where: {
+          id,
+          user_id: req.user.id,
+        },
+        attributes: [
+          "id",
+          "title",
+          "notebook_id",
+          "pinned",
+          "archived",
+          "trashed",
+          "version",
+          "synced",
+          "created_at",
+          "updated_at",
+          "firebase_document_id",
+        ],
+        include: [
+          {
+            model: Tag,
+            as: "tags",
+            required: false,
+            attributes: ["id", "name"],
+            through: {
+              attributes: [],
+            },
+          },
+        ],
+      });
+
+      if (!note) {
+        return res.status(404).json({
+          success: false,
+          msg: "Note not found",
+        });
+      }
+
+      const noteData = note.toJSON();
+
+      // Get content from Firebase Firestore
+      const firebaseDocId = note.firebase_document_id;
+      const content = await getFirebaseNoteContent(firebaseDocId);
+
+      // Format tags as array of tag names
+      const tags = (noteData.tags || []).map((tag) => tag.name);
+
+      // Build note object
+      const noteObject = {
+        id: noteData.id,
+        title: noteData.title || "Untitled",
+        content: content?.content?.content || "<p></p>",
+        pinned: noteData.pinned || false,
+        archived: noteData.archived || false,
+        trashed: noteData.trashed || false,
+        tags: tags,
+        notebook_id: noteData.notebook_id || null,
+        created_at: noteData.created_at,
+        updated_at: noteData.updated_at,
+        version: noteData.version || 1,
+        synced: noteData.synced || false,
+      };
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          note: noteObject,
+        },
+      });
+    } catch (error) {
+      console.error("Get calendar note details error:", error);
+      return res.status(500).json({
+        success: false,
+        msg: "Internal server error",
+        error: error.message,
+      });
+    }
+  };
+
   return {
     createNote,
     getAllNotes,
@@ -2226,6 +2330,7 @@ const refactorCreateNote = async (req, res) => {
     getNoteImages,
     deleteNoteImage,
     getNoteWithStack,
+    getCalendarNoteDetails,
   };
 };
 
