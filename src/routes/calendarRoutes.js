@@ -1,6 +1,6 @@
 const router = require("express").Router();
 const jwtVerify = require("../config/jwtVerify");
-const calendarController = require("../controllers/calendarController");
+const calendarController = require("../controllers/CalendarController");
 const noteController = require("../controllers/NoteController");
 const taskController = require("../controllers/TaskController");
 const {
