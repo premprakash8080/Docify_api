@@ -1,6 +1,6 @@
 const router = require("express").Router();
 const jwtVerify = require("../config/jwtVerify");
-const colorsController = require("../controllers/colorsController");
+const colorsController = require("../controllers/ColorsController");
 
 const {
     getAllColors,
