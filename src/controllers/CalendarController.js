@@ -80,6 +80,10 @@ const calendarController = () => {
         description: taskData.description || null,
         priority: taskData.priority || null,
         flagged: taskData.flagged || false,
+        reminder: taskData.reminder || null,
+        assigned_to: taskData.assigned_to || null,
+        sort_order: taskData.sort_order || null,
+        note_id: taskData.note_id || null,
       };
     }
 
@@ -156,7 +160,8 @@ const calendarController = () => {
           });
       }
 
-      const items = [];
+      const tasksArray = [];
+      const notesArray = [];
 
       // Fetch tasks with start_date in the date range
       const tasks = await Task.findAll({
@@ -173,19 +178,24 @@ const calendarController = () => {
               user_id: req.user.id,
               trashed: false,
             },
-            required: true,
+            required: false,
             attributes: ["id", "title"],
           },
         ],
         attributes: [
           "id",
+          "note_id",
           "label",
+          "description",
           "start_date",
           "start_time",
           "end_time",
           "completed",
           "priority",
           "flagged",
+          "reminder",
+          "assigned_to",
+          "sort_order",
         ],
         order: [["start_date", "ASC"]],
       });
@@ -193,7 +203,10 @@ const calendarController = () => {
       // Map tasks to calendar items
       tasks.forEach((task) => {
         const taskData = task.toJSON();
-        items.push(formatTaskForCalendar(taskData));
+        const formattedTask = formatTaskForCalendar(taskData, true);
+        // Use raw database ID instead of prefixed ID
+        formattedTask.id = taskData.id;
+        tasksArray.push(formattedTask);
       });
 
       // Fetch notes with created_at, updated_at, or last_modified in the date range
@@ -228,8 +241,8 @@ const calendarController = () => {
         const noteData = note.toJSON();
         const displayDate = noteData.updated_at || noteData.created_at;
 
-        items.push({
-          id: `note_${noteData.id}`,
+        notesArray.push({
+          id: noteData.id, // Use raw database ID
           type: "note",
           title: noteData.title || "Untitled Note",
           start: displayDate ? new Date(displayDate).toISOString() : null,
@@ -244,7 +257,8 @@ const calendarController = () => {
       return res.status(200).json({
         success: true,
         data: {
-          items,
+          tasks: tasksArray,
+          notes: notesArray,
         },
       });
     } catch (error) {
@@ -292,19 +306,24 @@ const calendarController = () => {
               user_id: req.user.id,
               trashed: false,
             },
-            required: true,
+            required: false,
             attributes: ["id", "title"],
           },
         ],
         attributes: [
           "id",
+          "note_id",
           "label",
+          "description",
           "start_date",
           "start_time",
           "end_time",
           "completed",
           "priority",
           "flagged",
+          "reminder",
+          "assigned_to",
+          "sort_order",
         ],
       });
 
@@ -316,7 +335,7 @@ const calendarController = () => {
       }
 
       const taskData = task.toJSON();
-      const item = formatTaskForCalendar(taskData);
+      const item = formatTaskForCalendar(taskData, true);
 
       return res.status(200).json({
         success: true,
@@ -578,11 +597,14 @@ const calendarController = () => {
   };
 
   /**
-   * @description Update a calendar event (task) start/end dates
+   * @description Update a calendar event (task) start/end dates using task_id (note_id is optional)
    * @param req.user - User from authentication middleware
-   * @param req.params.id - Task ID (primary key)
-   * @param req.body.start - Start date/time (ISO format)
-   * @param req.body.end - End date/time (ISO format, optional)
+   * @param req.body.task_id - Task ID to update (required)
+   * @param req.body.note_id - Note ID (optional, only used when task is linked to a note)
+   * @param req.body.start_date - Start date (YYYY-MM-DD)
+   * @param req.body.start_time - Start time (HH:mm:ss)
+   * @param req.body.end_date - End date (YYYY-MM-DD, optional)
+   * @param req.body.end_time - End time (HH:mm:ss, optional)
    * @param req.body.allDay - Whether event is all-day (optional)
    * @returns updated calendar event
    */
@@ -595,13 +617,12 @@ const calendarController = () => {
         });
       }
 
-      const { id } = req.params;
-      const { start_date, start_time, end_time, allDay } = req.body;
+      const { task_id, note_id, start_date, start_time, end_date, end_time, allDay } = req.body;
 
-      if (!id) {
+      if (!task_id) {
         return res.status(400).json({
           success: false,
-          msg: "Event ID is required",
+          msg: "Task ID is required",
         });
       }
 
@@ -612,23 +633,50 @@ const calendarController = () => {
         });
       }
 
-      // Get task and verify it belongs to user's note
+      // Build task query conditions
+      const taskWhere = { id: task_id };
+      
+      // If note_id is provided, verify it and add to task query
+      if (note_id) {
+        // Verify note belongs to user
+        const note = await Note.findOne({
+          where: {
+            id: note_id,
+            user_id: req.user.id,
+            trashed: false,
+          },
+          attributes: ["id", "title"],
+        });
+
+        if (!note) {
+          return res.status(404).json({
+            success: false,
+            msg: "Note not found or access denied",
+          });
+        }
+
+        // Add note_id to task query to verify task belongs to note
+        taskWhere.note_id = note_id;
+      }
+
+      // Find task by task_id (and note_id if provided)
       const task = await Task.findOne({
-        where: { id },
+        where: taskWhere,
         include: [
           {
             model: Note,
             as: "note",
-            where: {
+            where: note_id ? {
               user_id: req.user.id,
               trashed: false,
-            },
-            required: true,
+            } : undefined,
+            required: false,
             attributes: ["id", "title"],
           },
         ],
         attributes: [
           "id",
+          "note_id",
           "label",
           "start_date",
           "start_time",
@@ -642,8 +690,30 @@ const calendarController = () => {
       if (!task) {
         return res.status(404).json({
           success: false,
-          msg: "Calendar event not found",
+          msg: note_id 
+            ? "Task not found or does not belong to the specified note"
+            : "Task not found",
         });
+      }
+
+      // Verify task belongs to user (through note if note_id exists, or check task's note)
+      const taskJson = task.toJSON();
+      if (taskJson.note_id) {
+        // Task has a note, verify the note belongs to user
+        const taskNote = await Note.findOne({
+          where: {
+            id: taskJson.note_id,
+            user_id: req.user.id,
+            trashed: false,
+          },
+        });
+
+        if (!taskNote) {
+          return res.status(403).json({
+            success: false,
+            msg: "Access denied: task's note does not belong to user",
+          });
+        }
       }
 
       // Prepare update data
@@ -660,35 +730,41 @@ const calendarController = () => {
         updateData.end_time = end_time || null;
       }
 
+      // Update task
       await Task.update(updateData, {
-        where: { id },
+        where: { id: task.id },
       });
 
       // Fetch updated task
       const updatedTask = await Task.findOne({
-        where: { id },
+        where: { id: task.id },
         include: [
           {
             model: Note,
             as: "note",
-            required: true,
+            required: false,
             attributes: ["id", "title"],
           },
         ],
         attributes: [
           "id",
+          "note_id",
           "label",
+          "description",
           "start_date",
           "start_time",
           "end_time",
           "completed",
           "priority",
           "flagged",
+          "reminder",
+          "assigned_to",
+          "sort_order",
         ],
       });
 
       const taskData = updatedTask.toJSON();
-      const item = formatTaskForCalendar(taskData);
+      const item = formatTaskForCalendar(taskData, true);
 
       return res.status(200).json({
         success: true,

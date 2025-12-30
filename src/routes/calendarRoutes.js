@@ -30,8 +30,8 @@ router.get("/getCalendarEventById/:id", getCalendarEventById);
 // Custom date range (query params: ?startDate=2024-01-01&endDate=2024-01-31)
 router.get("/getCalendarEventsByRange", getCalendarEventsByRange);
 
-// Update calendar event (task) start/end dates
-router.put("/updateCalendarEvent/:id", updateCalendarEvent);
+// Update calendar event (task) start/end dates using note_id in body
+router.put("/updateCalendarEvent", updateCalendarEvent);
 
 // ==============================
 // Calendar Details (Read Only)
