@@ -9,6 +9,8 @@ const {
   getCalendarEventsByRange,
   getCalendarItems,
   updateCalendarEvent,
+  getExternalEvents,
+  createExternalEvent,
 } = calendarController();
 
 // Apply JWT middleware to all routes
@@ -20,6 +22,12 @@ router.use(jwtVerify);
 
 // Get all calendar items (tasks and notes)
 router.get("/getCalendarItems", getCalendarItems);
+
+// Get external events (task templates)
+router.get("/getExternalEvents", getExternalEvents);
+
+// Create external event (task template)
+router.post("/createExternalEvents", createExternalEvent);
 
 // Month / Week / Day view (based on query params: ?date=2024-01-15&view=month)
 router.get("/getCalendarEventsByDate", getCalendarEventsByDate);

@@ -8,7 +8,8 @@ const {
   updateStack,
   deleteStack,
   reorderStacks,
-  getStackNotebooks
+  getStackNotebooks,
+  getAllStackList
 } = require("../controllers/StackController");
 
 // Apply JWT middleware to all routes
@@ -23,6 +24,7 @@ router.post("/:id", getStackById);          // Single stack (POST for body param
 router.put("/:id", updateStack);           // Update stack
 router.delete("/:id", deleteStack);         // Delete stack
 
+router.get("/getAllStackList", getAllStackList); // Get stack with id and name
 // ==============================
 // Stack Ordering
 // ==============================

@@ -10,6 +10,7 @@ const Color = require("./color");
 const UserSetting = require("./userSetting");
 const Template = require("./template");
 const ScratchPad = require("./scratchPad");
+const ExternalEvent = require("./externalEvent");
 
 // Centralized model associations for Evernote-style project
 
@@ -20,6 +21,7 @@ User.hasMany(Tag, { foreignKey: "user_id", as: "tags" });
 User.hasMany(Note, { foreignKey: "user_id", as: "notes" });
 User.hasMany(File, { foreignKey: "user_id", as: "files" });
 User.hasMany(Template, { foreignKey: "user_id", as: "templates" });
+User.hasMany(ExternalEvent, { foreignKey: "user_id", as: "externalEvents" });
 // Each user has a single settings row
 User.hasOne(UserSetting, { foreignKey: "user_id", as: "settings" });
 UserSetting.belongsTo(User, { foreignKey: "user_id", as: "user" });
@@ -52,6 +54,9 @@ File.belongsTo(Note, { foreignKey: "note_id", as: "note" });
 // Task relationships
 Task.belongsTo(Note, { foreignKey: "note_id", as: "note" });
 
+// ExternalEvent relationships
+ExternalEvent.belongsTo(User, { foreignKey: "user_id", as: "user" });
+
 module.exports = {
   User,
   Stack,
@@ -65,6 +70,7 @@ module.exports = {
   UserSetting,
   Template,
   ScratchPad,
+  ExternalEvent,
 };
 
 

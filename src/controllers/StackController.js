@@ -173,7 +173,7 @@ const StackController = () => {
       // Transform the data to frontend-friendly structure
       const transformedStacks = stacks.map((stack) => {
         const stackData = stack.toJSON();
-        
+
         return {
           id: stackData.id,
           name: stackData.name,
@@ -183,10 +183,10 @@ const StackController = () => {
           updated_at: stackData.updated_at,
           color: stackData.color
             ? {
-                id: stackData.color.id,
-                name: stackData.color.name,
-                hex_code: stackData.color.hex_code,
-              }
+              id: stackData.color.id,
+              name: stackData.color.name,
+              hex_code: stackData.color.hex_code,
+            }
             : null,
           notebooks: (stackData.notebooks || []).map((notebook) => ({
             id: notebook.id,
@@ -198,10 +198,10 @@ const StackController = () => {
             updated_at: notebook.updated_at,
             color: notebook.color
               ? {
-                  id: notebook.color.id,
-                  name: notebook.color.name,
-                  hex_code: notebook.color.hex_code,
-                }
+                id: notebook.color.id,
+                name: notebook.color.name,
+                hex_code: notebook.color.hex_code,
+              }
               : null,
             notes: (notebook.notes || []).map((note) => ({
               id: note.id,
@@ -300,14 +300,14 @@ const StackController = () => {
       const notebookIds = notebooksInStack.map((nb) => nb.id);
       const totalNotes = notebookIds.length > 0
         ? await Note.count({
-            where: {
-              notebook_id: {
-                [Sequelize.Op.in]: notebookIds,
-              },
-              user_id: req.user.id,
-              trashed: false,
+          where: {
+            notebook_id: {
+              [Sequelize.Op.in]: notebookIds,
             },
-          })
+            user_id: req.user.id,
+            trashed: false,
+          },
+        })
         : 0;
 
       const stackData = stack.toJSON();
@@ -676,6 +676,28 @@ const StackController = () => {
     }
   };
 
+  const getAllStackList = async (req, res) => {
+
+    try {
+      const stacks = await Stack.findAll({
+        where: { user_id: req.user.id },
+        attributes: ["id", "name"],
+      });
+
+      return res.status(200).json({
+        success: true,
+        stacks,
+      });
+    } catch (error) {
+      console.error("Get all stack list error:", error);
+      return res.status(500).json({
+        success: false,
+        msg: "Internal server error",
+        error: error.message,
+      });
+    }
+  };
+
   return {
     createStack,
     getAllStacks,
@@ -684,8 +706,8 @@ const StackController = () => {
     deleteStack,
     reorderStacks,
     getStackNotebooks,
+    getAllStackList
   };
 };
 
 module.exports = StackController();
-

@@ -684,10 +684,10 @@ const NotebookController = () => {
     try {
       const { id, stack_id } = req.body;
 
-      if (!id || !stack_id) {
+      if (!id) {
         return res.status(400).json({
           success: false,
-          msg: "Notebook ID and Stack ID are required",
+          msg: "Notebook ID is required",
         });
       }
 
@@ -707,6 +707,38 @@ const NotebookController = () => {
         });
       }
 
+      // If stack_id is not provided (null, undefined, or empty), remove notebook from stack
+      if (!stack_id || stack_id === null) {
+        // Update notebook to remove from stack
+        await notebook.update({
+          stack_id: null,
+          sort_order: 0,
+        });
+
+        // Fetch updated notebook with color
+        let updatedNotebook = await Notebook.findByPk(notebook.id, {
+          include: [
+            {
+              model: Color,
+              as: "color",
+              attributes: ["id", "name", "hex_code"],
+            },
+          ],
+        });
+
+        updatedNotebook = updatedNotebook.toJSON();
+        updatedNotebook.stack = null;
+
+        return res.status(200).json({
+          success: true,
+          msg: "Notebook removed from stack successfully",
+          data: {
+            notebook: updatedNotebook,
+          },
+        });
+      }
+
+      // If stack_id is provided, move notebook to that stack
       // Verify stack belongs to user
       const stack = await Stack.findOne({
         where: {

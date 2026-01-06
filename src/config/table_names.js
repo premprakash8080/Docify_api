@@ -11,6 +11,7 @@ const tableNames = {
   TABLE_NAME_COLORS: "colors",
   TABLE_NAME_TEMPLATES: "templates",
   TABLE_NAME_SCRATCH_PAD: "scratch_pad",
+  TABLE_NAME_EXTERNAL_EVENTS: "external_events",
 };
 
 module.exports = tableNames;

@@ -1,0 +1,2621 @@
+{
+  "Authentication": [
+    {
+      "apiName": "Register",
+      "method": "POST",
+      "endpoint": "/users/register",
+      "fullUrlExample": "{{api_base}}/users/register",
+      "payload": {
+        "email": "string (required)",
+        "password": "string (required)",
+        "display_name": "string (optional)"
+      },
+      "queryParameters": [],
+      "description": "Registers a new user with email and password authentication.",
+      "exampleRequest": {
+        "email": "user@example.com",
+        "password": "password123",
+        "display_name": "John Doe"
+      },
+      "exampleResponse": {
+        "success": true,
+        "msg": "User registered successfully",
+        "data": {
+          "user": {
+            "id": 1,
+            "email": "user@example.com",
+            "display_name": "John Doe",
+            "auth_provider": "email"
+          },
+          "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+          "expires": "30d"
+        }
+      }
+    },
+    {
+      "apiName": "Login",
+      "method": "POST",
+      "endpoint": "/users/login",
+      "fullUrlExample": "{{api_base}}/users/login",
+      "payload": {
+        "email": "string (required)",
+        "password": "string (required)"
+      },
+      "queryParameters": [],
+      "description": "Authenticates a user with email and password, returns JWT token.",
+      "exampleRequest": {
+        "email": "developer@yopmail.com",
+        "password": "password123"
+      },
+      "exampleResponse": {
+        "success": true,
+        "msg": "Login successful",
+        "data": {
+          "user": {
+            "id": 1,
+            "email": "developer@yopmail.com",
+            "display_name": "Dev User",
+            "avatar_url": "https://example.com/avatars/john.jpg",
+            "auth_provider": "email"
+          },
+          "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjpudWxsLCJpZCI6MSwiaWF0IjoxNzY3MDk0NjQ4NzgyLCJleHAiOjE3NjcwOTcyNDA3ODJ9.cK0zgHZfW9cduhiGx4z3JcA42eVNIybCROBpmZcUCmI",
+          "expires": "30d"
+        }
+      }
+    },
+    {
+      "apiName": "Logout",
+      "method": "POST",
+      "endpoint": "/users/logout",
+      "fullUrlExample": "{{api_base}}/users/logout",
+      "payload": null,
+      "queryParameters": [],
+      "description": "Logs out the authenticated user (invalidates token on server side if implemented).",
+      "exampleResponse": {
+        "success": true,
+        "msg": "Logout successful"
+      }
+    },
+    {
+      "apiName": "Refresh Token",
+      "method": "POST",
+      "endpoint": "/users/refresh-token",
+      "fullUrlExample": "{{api_base}}/users/refresh-token",
+      "payload": {
+        "refresh_token": "string (required)"
+      },
+      "queryParameters": [],
+      "description": "Refreshes the authentication token using a refresh token.",
+      "exampleRequest": {
+        "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+      },
+      "exampleResponse": {
+        "success": true,
+        "msg": "Token refreshed successfully",
+        "data": {
+          "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+          "expires": "30d"
+        }
+      }
+    },
+    {
+      "apiName": "Forgot Password",
+      "method": "POST",
+      "endpoint": "/users/forgot-password",
+      "fullUrlExample": "{{api_base}}/users/forgot-password",
+      "payload": {
+        "email": "string (required)"
+      },
+      "queryParameters": [],
+      "description": "Sends a password reset email to the user.",
+      "exampleRequest": {
+        "email": "user@example.com"
+      },
+      "exampleResponse": {
+        "success": true,
+        "msg": "Password reset email sent successfully"
+      }
+    },
+    {
+      "apiName": "Reset Password",
+      "method": "POST",
+      "endpoint": "/users/reset-password",
+      "fullUrlExample": "{{api_base}}/users/reset-password",
+      "payload": {
+        "token": "string (required)",
+        "password": "string (required)"
+      },
+      "queryParameters": [],
+      "description": "Resets the user's password using a reset token received via email.",
+      "exampleRequest": {
+        "token": "reset_token_from_email",
+        "password": "newPassword123"
+      },
+      "exampleResponse": {
+        "success": true,
+        "msg": "Password reset successfully"
+      }
+    }
+  ],
+  "User Profile": [
+    {
+      "apiName": "Get Profile",
+      "method": "GET",
+      "endpoint": "/users/profile",
+      "fullUrlExample": "{{api_base}}/users/profile",
+      "payload": null,
+      "queryParameters": [],
+      "description": "Retrieves the authenticated user's profile information.",
+      "exampleResponse": {
+        "success": true,
+        "data": {
+          "user": {
+            "id": 1,
+            "email": "user@example.com",
+            "display_name": "John Doe",
+            "avatar_url": "https://example.com/avatars/john.jpg",
+            "auth_provider": "email",
+            "created_at": "2025-12-23T11:34:32.000Z",
+            "updated_at": "2025-12-23T11:34:32.000Z"
+          }
+        }
+      }
+    },
+    {
+      "apiName": "Update Profile",
+      "method": "PUT",
+      "endpoint": "/users/profile",
+      "fullUrlExample": "{{api_base}}/users/profile",
+      "payload": "FormData: display_name (text, optional), avatar (file, optional)",
+      "queryParameters": [],
+      "description": "Updates the user's profile information including display name and avatar image.",
+      "exampleRequest": "FormData with display_name and/or avatar file",
+      "exampleResponse": {
+        "success": true,
+        "msg": "Profile updated successfully",
+        "data": {
+          "user": {
+            "id": 1,
+            "email": "user@example.com",
+            "display_name": "Updated Name",
+            "avatar_url": "https://example.com/avatars/new.jpg",
+            "updated_at": "2025-12-30T16:25:00.000Z"
+          }
+        }
+      }
+    },
+    {
+      "apiName": "Change Password",
+      "method": "PUT",
+      "endpoint": "/users/change-password",
+      "fullUrlExample": "{{api_base}}/users/change-password",
+      "payload": {
+        "current_password": "string (required)",
+        "new_password": "string (required)"
+      },
+      "queryParameters": [],
+      "description": "Changes the user's password. Requires current password for verification.",
+      "exampleRequest": {
+        "current_password": "oldPassword123",
+        "new_password": "newPassword123"
+      },
+      "exampleResponse": {
+        "success": true,
+        "msg": "Password changed successfully"
+      }
+    },
+    {
+      "apiName": "Get User Settings",
+      "method": "GET",
+      "endpoint": "/users/settings",
+      "fullUrlExample": "{{api_base}}/users/settings",
+      "payload": null,
+      "queryParameters": [],
+      "description": "Retrieves the user's application settings (theme, layout, etc.).",
+      "exampleResponse": {
+        "success": true,
+        "data": {
+          "settings": {
+            "theme_layout": "light",
+            "theme_color": "blue",
+            "corners": "rounded",
+            "button_style": "filled"
+          }
+        }
+      }
+    },
+    {
+      "apiName": "Update User Settings",
+      "method": "PUT",
+      "endpoint": "/users/settings",
+      "fullUrlExample": "{{api_base}}/users/settings",
+      "payload": {
+        "theme_layout": "string (optional)",
+        "theme_color": "string (optional)",
+        "corners": "string (optional)",
+        "button_style": "string (optional)"
+      },
+      "queryParameters": [],
+      "description": "Updates the user's application settings.",
+      "exampleRequest": {
+        "theme_layout": "dark",
+        "theme_color": "purple",
+        "corners": "sharp",
+        "button_style": "outlined"
+      },
+      "exampleResponse": {
+        "success": true,
+        "msg": "Settings updated successfully",
+        "data": {
+          "settings": {
+            "theme_layout": "dark",
+            "theme_color": "purple",
+            "corners": "sharp",
+            "button_style": "outlined"
+          }
+        }
+      }
+    },
+    {
+      "apiName": "Delete Account",
+      "method": "DELETE",
+      "endpoint": "/users/delete-account",
+      "fullUrlExample": "{{api_base}}/users/delete-account",
+      "payload": null,
+      "queryParameters": [],
+      "description": "Permanently deletes the user's account and all associated data.",
+      "exampleResponse": {
+        "success": true,
+        "msg": "Account deleted successfully"
+      }
+    }
+  ],
+  "Stacks": [
+    {
+      "apiName": "Create Stack",
+      "method": "POST",
+      "endpoint": "/stacks",
+      "fullUrlExample": "{{api_base}}/stacks",
+      "payload": {
+        "name": "string (required)",
+        "description": "string (optional)",
+        "color_id": "number (optional)",
+        "sort_order": "number (optional)"
+      },
+      "queryParameters": [],
+      "description": "Creates a new stack for organizing notebooks.",
+      "exampleRequest": {
+        "name": "My Stack",
+        "description": "Stack description",
+        "color_id": 1,
+        "sort_order": 0
+      },
+      "exampleResponse": {
+        "success": true,
+        "msg": "Stack created successfully",
+        "data": {
+          "stack": {
+            "id": 1,
+            "name": "My Stack",
+            "description": "Stack description",
+            "color_id": 1,
+            "sort_order": 0,
+            "user_id": 1,
+            "created_at": "2025-12-30T16:17:13.040Z",
+            "updated_at": "2025-12-30T16:17:13.040Z",
+            "color": {
+              "id": 1,
+              "name": "Indigo",
+              "hex_code": "#6366F1"
+            }
+          }
+        }
+      }
+    },
+    {
+      "apiName": "Get All Stacks",
+      "method": "GET",
+      "endpoint": "/stacks",
+      "fullUrlExample": "{{api_base}}/stacks",
+      "payload": null,
+      "queryParameters": [],
+      "description": "Retrieves all stacks for the authenticated user with nested notebooks and notes.",
+      "exampleResponse": {
+        "success": true,
+        "data": {
+          "stacks": [
+            {
+              "id": 1,
+              "name": "My Stack",
+              "description": "Stack description",
+              "color_id": 1,
+              "sort_order": 0,
+              "notebooks": []
+            }
+          ]
+        }
+      }
+    },
+    {
+      "apiName": "Get Stack By ID",
+      "method": "POST",
+      "endpoint": "/stacks/:id",
+      "fullUrlExample": "{{api_base}}/stacks/1",
+      "payload": {
+        "id": "number (required)"
+      },
+      "pathParameters": [
+        {
+          "name": "id",
+          "type": "number",
+          "required": true,
+          "description": "The ID of the stack to retrieve"
+        }
+      ],
+      "queryParameters": [],
+      "description": "Fetches a single stack by its ID.",
+      "exampleRequest": {
+        "id": 1
+      },
+      "exampleResponse": {
+        "success": true,
+        "data": {
+          "stack": {
+            "id": 1,
+            "name": "My Stack",
+            "description": "Stack description",
+            "color_id": 1,
+            "sort_order": 0,
+            "color": {
+              "id": 1,
+              "name": "Indigo",
+              "hex_code": "#6366F1"
+            }
+          }
+        }
+      }
+    },
+    {
+      "apiName": "Update Stack",
+      "method": "PUT",
+      "endpoint": "/stacks/:id",
+      "fullUrlExample": "{{api_base}}/stacks/1",
+      "payload": {
+        "id": "number (required, must match path :id)",
+        "name": "string (optional)",
+        "description": "string (optional)",
+        "color_id": "number (optional)"
+      },
+      "pathParameters": [
+        {
+          "name": "id",
+          "type": "number",
+          "required": true,
+          "description": "The ID of the stack to update"
+        }
+      ],
+      "queryParameters": [],
+      "description": "Updates an existing stack. Only provided fields are updated.",
+      "exampleRequest": {
+        "id": 1,
+        "name": "Updated Stack Name",
+        "description": "Updated description",
+        "color_id": 2
+      },
+      "exampleResponse": {
+        "success": true,
+        "msg": "Stack updated successfully",
+        "data": {
+          "stack": {
+            "id": 1,
+            "name": "Updated Stack Name",
+            "description": "Updated description",
+            "color_id": 2,
+            "updated_at": "2025-12-30T16:25:00.000Z"
+          }
+        }
+      }
+    },
+    {
+      "apiName": "Delete Stack",
+      "method": "DELETE",
+      "endpoint": "/stacks/:id",
+      "fullUrlExample": "{{api_base}}/stacks/1",
+      "payload": null,
+      "pathParameters": [
+        {
+          "name": "id",
+          "type": "number",
+          "required": true,
+          "description": "The ID of the stack to delete"
+        }
+      ],
+      "queryParameters": [],
+      "description": "Permanently deletes a stack.",
+      "exampleResponse": {
+        "success": true,
+        "msg": "Stack deleted successfully"
+      }
+    },
+    {
+      "apiName": "Reorder Stacks",
+      "method": "PUT",
+      "endpoint": "/stacks/reorder",
+      "fullUrlExample": "{{api_base}}/stacks/reorder",
+      "payload": {
+        "stacks": "array of objects (required)",
+        "stacks[].id": "number (required)",
+        "stacks[].sort_order": "number (required)"
+      },
+      "queryParameters": [],
+      "description": "Reorders multiple stacks by assigning new sort_order values.",
+      "exampleRequest": {
+        "stacks": [
+          {
+            "id": 1,
+            "sort_order": 0
+          },
+          {
+            "id": 2,
+            "sort_order": 1
+          }
+        ]
+      },
+      "exampleResponse": {
+        "success": true,
+        "msg": "Stacks reordered successfully"
+      }
+    },
+    {
+      "apiName": "Get Stack Notebooks",
+      "method": "POST",
+      "endpoint": "/stacks/:id/notebooks",
+      "fullUrlExample": "{{api_base}}/stacks/1/notebooks",
+      "payload": {
+        "id": "number (required)"
+      },
+      "pathParameters": [
+        {
+          "name": "id",
+          "type": "number",
+          "required": true,
+          "description": "The ID of the stack"
+        }
+      ],
+      "queryParameters": [],
+      "description": "Retrieves all notebooks belonging to a specific stack.",
+      "exampleRequest": {
+        "id": 1
+      },
+      "exampleResponse": {
+        "success": true,
+        "data": {
+          "notebooks": [
+            {
+              "id": 1,
+              "name": "My Notebook",
+              "description": "Notebook description",
+              "stack_id": 1,
+              "color_id": 1,
+              "sort_order": 0
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "Notebooks": [
+    {
+      "apiName": "Create Notebook",
+      "method": "POST",
+      "endpoint": "/notebooks/createNotebook",
+      "fullUrlExample": "{{api_base}}/notebooks/createNotebook",
+      "payload": {
+        "name": "string (required)",
+        "description": "string (optional)",
+        "stack_id": "number (optional)",
+        "color_id": "number (optional)",
+        "sort_order": "number (optional)"
+      },
+      "queryParameters": [],
+      "description": "Creates a new notebook. Can optionally be assigned to a stack.",
+      "exampleRequest": {
+        "name": "My Notebook",
+        "description": "Notebook description",
+        "stack_id": 1,
+        "color_id": 1,
+        "sort_order": 0
+      },
+      "exampleResponse": {
+        "success": true,
+        "msg": "Notebook created successfully",
+        "data": {
+          "notebook": {
+            "id": 1,
+            "name": "My Notebook",
+            "description": "Notebook description",
+            "stack_id": 1,
+            "color_id": 1,
+            "sort_order": 0,
+            "created_at": "2025-12-30T16:17:13.040Z",
+            "updated_at": "2025-12-30T16:17:13.040Z"
+          }
+        }
+      }
+    },
+    {
+      "apiName": "Get All Notebooks",
+      "method": "POST",
+      "endpoint": "/notebooks/list",
+      "fullUrlExample": "{{api_base}}/notebooks/list",
+      "payload": {
+        "stack_id": "number (optional)",
+        "archived": "boolean (optional)",
+        "trashed": "boolean (optional)"
+      },
+      "queryParameters": [],
+      "description": "Retrieves all notebooks for the authenticated user with optional filtering.",
+      "exampleRequest": {
+        "stack_id": 1,
+        "archived": false,
+        "trashed": false
+      },
+      "exampleResponse": {
+        "success": true,
+        "data": {
+          "notebooks": [
+            {
+              "id": 1,
+              "name": "My Notebook",
+              "description": "Notebook description",
+              "stack_id": 1,
+              "color_id": 1,
+              "sort_order": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "apiName": "Get Notebook By ID",
+      "method": "POST",
+      "endpoint": "/notebooks/:id",
+      "fullUrlExample": "{{api_base}}/notebooks/1",
+      "payload": {
+        "id": "number (required)"
+      },
+      "pathParameters": [
+        {
+          "name": "id",
+          "type": "number",
+          "required": true,
+          "description": "The ID of the notebook to retrieve"
+        }
+      ],
+      "queryParameters": [],
+      "description": "Fetches a single notebook by its ID.",
+      "exampleRequest": {
+        "id": 1
+      },
+      "exampleResponse": {
+        "success": true,
+        "data": {
+          "notebook": {
+            "id": 1,
+            "name": "My Notebook",
+            "description": "Notebook description",
+            "stack_id": 1,
+            "color_id": 1,
+            "sort_order": 0
+          }
+        }
+      }
+    },
+    {
+      "apiName": "Update Notebook",
+      "method": "PUT",
+      "endpoint": "/notebooks/:id",
+      "fullUrlExample": "{{api_base}}/notebooks/1",
+      "payload": {
+        "id": "number (required, must match path :id)",
+        "name": "string (optional)",
+        "description": "string (optional)",
+        "color_id": "number (optional)"
+      },
+      "pathParameters": [
+        {
+          "name": "id",
+          "type": "number",
+          "required": true,
+          "description": "The ID of the notebook to update"
+        }
+      ],
+      "queryParameters": [],
+      "description": "Updates an existing notebook. Only provided fields are updated.",
+      "exampleRequest": {
+        "id": 1,
+        "name": "Updated Notebook Name",
+        "description": "Updated description",
+        "color_id": 2
+      },
+      "exampleResponse": {
+        "success": true,
+        "msg": "Notebook updated successfully",
+        "data": {
+          "notebook": {
+            "id": 1,
+            "name": "Updated Notebook Name",
+            "description": "Updated description",
+            "color_id": 2,
+            "updated_at": "2025-12-30T16:25:00.000Z"
+          }
+        }
+      }
+    },
+    {
+      "apiName": "Delete Notebook",
+      "method": "DELETE",
+      "endpoint": "/notebooks/:id",
+      "fullUrlExample": "{{api_base}}/notebooks/1",
+      "payload": null,
+      "pathParameters": [
+        {
+          "name": "id",
+          "type": "number",
+          "required": true,
+          "description": "The ID of the notebook to delete"
+        }
+      ],
+      "queryParameters": [],
+      "description": "Permanently deletes a notebook.",
+      "exampleResponse": {
+        "success": true,
+        "msg": "Notebook deleted successfully"
+      }
+    },
+    {
+      "apiName": "Reorder Notebooks",
+      "method": "PUT",
+      "endpoint": "/notebooks/reorder",
+      "fullUrlExample": "{{api_base}}/notebooks/reorder",
+      "payload": {
+        "notebooks": "array of objects (required)",
+        "notebooks[].id": "number (required)",
+        "notebooks[].sort_order": "number (required)"
+      },
+      "queryParameters": [],
+      "description": "Reorders multiple notebooks by assigning new sort_order values.",
+      "exampleRequest": {
+        "notebooks": [
+          {
+            "id": 1,
+            "sort_order": 0
+          },
+          {
+            "id": 2,
+            "sort_order": 1
+          }
+        ]
+      },
+      "exampleResponse": {
+        "success": true,
+        "msg": "Notebooks reordered successfully"
+      }
+    },
+    {
+      "apiName": "Move Notebook To Stack",
+      "method": "PUT",
+      "endpoint": "/notebooks/stack/updateNotebookStack",
+      "fullUrlExample": "{{api_base}}/notebooks/stack/updateNotebookStack",
+      "payload": {
+        "notebook_id": "number (required)",
+        "stack_id": "number (required)"
+      },
+      "queryParameters": [],
+      "description": "Moves a notebook to a different stack.",
+      "exampleRequest": {
+        "notebook_id": 1,
+        "stack_id": 2
+      },
+      "exampleResponse": {
+        "success": true,
+        "msg": "Notebook moved to stack successfully",
+        "data": {
+          "notebook": {
+            "id": 1,
+            "stack_id": 2,
+            "updated_at": "2025-12-30T16:25:00.000Z"
+          }
+        }
+      }
+    },
+    {
+      "apiName": "Remove Notebook From Stack",
+      "method": "DELETE",
+      "endpoint": "/notebooks/stack/removeNotebookFromStack",
+      "fullUrlExample": "{{api_base}}/notebooks/stack/removeNotebookFromStack",
+      "payload": {
+        "notebook_id": "number (required)"
+      },
+      "queryParameters": [],
+      "description": "Removes a notebook from its current stack (sets stack_id to null).",
+      "exampleRequest": {
+        "notebook_id": 1
+      },
+      "exampleResponse": {
+        "success": true,
+        "msg": "Notebook removed from stack successfully",
+        "data": {
+          "notebook": {
+            "id": 1,
+            "stack_id": null,
+            "updated_at": "2025-12-30T16:25:00.000Z"
+          }
+        }
+      }
+    },
+    {
+      "apiName": "Get Notebook Notes",
+      "method": "GET",
+      "endpoint": "/notebooks/getNotebookNotesById",
+      "fullUrlExample": "{{api_base}}/notebooks/getNotebookNotesById?id=1&archived=false&trashed=false&pinned=false",
+      "payload": null,
+      "queryParameters": [
+        {
+          "name": "id",
+          "type": "number",
+          "required": true,
+          "description": "The ID of the notebook"
+        },
+        {
+          "name": "archived",
+          "type": "boolean",
+          "required": false,
+          "description": "Filter by archived status"
+        },
+        {
+          "name": "trashed",
+          "type": "boolean",
+          "required": false,
+          "description": "Filter by trashed status"
+        },
+        {
+          "name": "pinned",
+          "type": "boolean",
+          "required": false,
+          "description": "Filter by pinned status"
+        }
+      ],
+      "description": "Retrieves all notes belonging to a specific notebook with optional filtering.",
+      "exampleResponse": {
+        "success": true,
+        "data": {
+          "notes": [
+            {
+              "id": "2f9acc25-8ea0-402e-9e33-c4aedd4a451e",
+              "title": "My Note",
+              "notebook_id": 1,
+              "pinned": false,
+              "archived": false,
+              "trashed": false
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "Notes": [
+    {
+      "apiName": "Create Note",
+      "method": "POST",
+      "endpoint": "/notes",
+      "fullUrlExample": "{{api_base}}/notes",
+      "payload": {
+        "title": "string (required)",
+        "notebook_id": "number (optional)",
+        "firebase_document_id": "string (optional)"
+      },
+      "queryParameters": [],
+      "description": "Creates a new note. Can optionally be assigned to a notebook.",
+      "exampleRequest": {
+        "title": "My Note",
+        "notebook_id": 1,
+        "firebase_document_id": "optional_firebase_id"
+      },
+      "exampleResponse": {
+        "success": true,
+        "msg": "Note created successfully",
+        "data": {
+          "note": {
+            "id": "2f9acc25-8ea0-402e-9e33-c4aedd4a451e",
+            "title": "My Note",
+            "notebook_id": 1,
+            "firebase_document_id": "optional_firebase_id",
+            "created_at": "2025-12-30T16:17:13.040Z",
+            "updated_at": "2025-12-30T16:17:13.040Z"
+          }
+        }
+      }
+    },
+    {
+      "apiName": "Get All Notes",
+      "method": "GET",
+      "endpoint": "/notes/getAllNotes",
+      "fullUrlExample": "{{api_base}}/notes/getAllNotes?tag_id=1&stack_id=1&notebook_id=1",
+      "payload": null,
+      "queryParameters": [
+        {
+          "name": "tag_id",
+          "type": "number",
+          "required": false,
+          "description": "Filter notes by tag ID"
+        },
+        {
+          "name": "stack_id",
+          "type": "number",
+          "required": false,
+          "description": "Filter notes by stack ID"
+        },
+        {
+          "name": "notebook_id",
+          "type": "string (UUID)",
+          "required": false,
+          "description": "Filter notes by notebook ID"
+        }
+      ],
+      "description": "Retrieves all notes for the authenticated user with optional filtering.",
+      "exampleResponse": {
+        "success": true,
+        "data": {
+          "notes": [
+            {
+              "id": "2f9acc25-8ea0-402e-9e33-c4aedd4a451e",
+              "title": "My Note",
+              "notebook_id": 1,
+              "pinned": false,
+              "archived": false,
+              "trashed": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "apiName": "Get Note By ID",
+      "method": "POST",
+      "endpoint": "/notes/getNoteById",
+      "fullUrlExample": "{{api_base}}/notes/getNoteById",
+      "payload": {
+        "id": "string (UUID, required)"
+      },
+      "queryParameters": [],
+      "description": "Fetches a single note by its ID.",
+      "exampleRequest": {
+        "id": "2f9acc25-8ea0-402e-9e33-c4aedd4a451e"
+      },
+      "exampleResponse": {
+        "success": true,
+        "data": {
+          "note": {
+            "id": "2f9acc25-8ea0-402e-9e33-c4aedd4a451e",
+            "title": "My Note",
+            "notebook_id": 1,
+            "pinned": false,
+            "archived": false,
+            "trashed": false,
+            "created_at": "2025-12-30T16:17:13.040Z",
+            "updated_at": "2025-12-30T16:17:13.040Z"
+          }
+        }
+      }
+    },
+    {
+      "apiName": "Update Note Metadata",
+      "method": "PUT",
+      "endpoint": "/notes/:id",
+      "fullUrlExample": "{{api_base}}/notes/2f9acc25-8ea0-402e-9e33-c4aedd4a451e",
+      "payload": {
+        "title": "string (optional)",
+        "notebook_id": "number (optional)",
+        "version": "number (optional)"
+      },
+      "pathParameters": [
+        {
+          "name": "id",
+          "type": "string (UUID)",
+          "required": true,
+          "description": "The ID of the note to update"
+        }
+      ],
+      "queryParameters": [],
+      "description": "Updates note metadata (title, notebook assignment, version).",
+      "exampleRequest": {
+        "title": "Updated Note Title",
+        "notebook_id": 2,
+        "version": 2
+      },
+      "exampleResponse": {
+        "success": true,
+        "msg": "Note updated successfully",
+        "data": {
+          "note": {
+            "id": "2f9acc25-8ea0-402e-9e33-c4aedd4a451e",
+            "title": "Updated Note Title",
+            "notebook_id": 2,
+            "version": 2,
+            "updated_at": "2025-12-30T16:25:00.000Z"
+          }
+        }
+      }
+    },
+    {
+      "apiName": "Delete Note",
+      "method": "DELETE",
+      "endpoint": "/notes/:id",
+      "fullUrlExample": "{{api_base}}/notes/2f9acc25-8ea0-402e-9e33-c4aedd4a451e",
+      "payload": null,
+      "pathParameters": [
+        {
+          "name": "id",
+          "type": "string (UUID)",
+          "required": true,
+          "description": "The ID of the note to delete"
+        }
+      ],
+      "queryParameters": [],
+      "description": "Permanently deletes a note.",
+      "exampleResponse": {
+        "success": true,
+        "msg": "Note deleted successfully"
+      }
+    },
+    {
+      "apiName": "Get Note Content",
+      "method": "GET",
+      "endpoint": "/notes/getNoteContent",
+      "fullUrlExample": "{{api_base}}/notes/getNoteContent?id=2f9acc25-8ea0-402e-9e33-c4aedd4a451e",
+      "payload": null,
+      "queryParameters": [
+        {
+          "name": "id",
+          "type": "string (UUID)",
+          "required": true,
+          "description": "The ID of the note"
+        }
+      ],
+      "description": "Retrieves the content of a note (typically stored in Firebase).",
+      "exampleResponse": {
+        "success": true,
+        "data": {
+          "content": "Note content here...",
+          "note_id": "2f9acc25-8ea0-402e-9e33-c4aedd4a451e"
+        }
+      }
+    },
+    {
+      "apiName": "Save Note Content",
+      "method": "PUT",
+      "endpoint": "/notes/:id/content",
+      "fullUrlExample": "{{api_base}}/notes/2f9acc25-8ea0-402e-9e33-c4aedd4a451e/content",
+      "payload": {
+        "content": "string (required)",
+        "title": "string (optional)"
+      },
+      "pathParameters": [
+        {
+          "name": "id",
+          "type": "string (UUID)",
+          "required": true,
+          "description": "The ID of the note"
+        }
+      ],
+      "queryParameters": [],
+      "description": "Saves or updates the content of a note.",
+      "exampleRequest": {
+        "content": "Updated note content...",
+        "title": "Updated Title"
+      },
+      "exampleResponse": {
+        "success": true,
+        "msg": "Note content saved successfully"
+      }
+    },
+    {
+      "apiName": "Pin Note",
+      "method": "PUT",
+      "endpoint": "/notes/:id/pin",
+      "fullUrlExample": "{{api_base}}/notes/2f9acc25-8ea0-402e-9e33-c4aedd4a451e/pin",
+      "payload": null,
+      "pathParameters": [
+        {
+          "name": "id",
+          "type": "string (UUID)",
+          "required": true,
+          "description": "The ID of the note to pin"
+        }
+      ],
+      "queryParameters": [],
+      "description": "Pins a note to the top of the list.",
+      "exampleResponse": {
+        "success": true,
+        "msg": "Note pinned successfully",
+        "data": {
+          "note": {
+            "id": "2f9acc25-8ea0-402e-9e33-c4aedd4a451e",
+            "pinned": true,
+            "updated_at": "2025-12-30T16:25:00.000Z"
+          }
+        }
+      }
+    },
+    {
+      "apiName": "Unpin Note",
+      "method": "PUT",
+      "endpoint": "/notes/:id/unpin",
+      "fullUrlExample": "{{api_base}}/notes/2f9acc25-8ea0-402e-9e33-c4aedd4a451e/unpin",
+      "payload": null,
+      "pathParameters": [
+        {
+          "name": "id",
+          "type": "string (UUID)",
+          "required": true,
+          "description": "The ID of the note to unpin"
+        }
+      ],
+      "queryParameters": [],
+      "description": "Unpins a note.",
+      "exampleResponse": {
+        "success": true,
+        "msg": "Note unpinned successfully",
+        "data": {
+          "note": {
+            "id": "2f9acc25-8ea0-402e-9e33-c4aedd4a451e",
+            "pinned": false,
+            "updated_at": "2025-12-30T16:25:00.000Z"
+          }
+        }
+      }
+    },
+    {
+      "apiName": "Archive Note",
+      "method": "PUT",
+      "endpoint": "/notes/:id/archive",
+      "fullUrlExample": "{{api_base}}/notes/2f9acc25-8ea0-402e-9e33-c4aedd4a451e/archive",
+      "payload": null,
+      "pathParameters": [
+        {
+          "name": "id",
+          "type": "string (UUID)",
+          "required": true,
+          "description": "The ID of the note to archive"
+        }
+      ],
+      "queryParameters": [],
+      "description": "Archives a note.",
+      "exampleResponse": {
+        "success": true,
+        "msg": "Note archived successfully",
+        "data": {
+          "note": {
+            "id": "2f9acc25-8ea0-402e-9e33-c4aedd4a451e",
+            "archived": true,
+            "updated_at": "2025-12-30T16:25:00.000Z"
+          }
+        }
+      }
+    },
+    {
+      "apiName": "Unarchive Note",
+      "method": "PUT",
+      "endpoint": "/notes/:id/unarchive",
+      "fullUrlExample": "{{api_base}}/notes/2f9acc25-8ea0-402e-9e33-c4aedd4a451e/unarchive",
+      "payload": null,
+      "pathParameters": [
+        {
+          "name": "id",
+          "type": "string (UUID)",
+          "required": true,
+          "description": "The ID of the note to unarchive"
+        }
+      ],
+      "queryParameters": [],
+      "description": "Unarchives a note.",
+      "exampleResponse": {
+        "success": true,
+        "msg": "Note unarchived successfully",
+        "data": {
+          "note": {
+            "id": "2f9acc25-8ea0-402e-9e33-c4aedd4a451e",
+            "archived": false,
+            "updated_at": "2025-12-30T16:25:00.000Z"
+          }
+        }
+      }
+    },
+    {
+      "apiName": "Trash Note",
+      "method": "PUT",
+      "endpoint": "/notes/:id/trash",
+      "fullUrlExample": "{{api_base}}/notes/2f9acc25-8ea0-402e-9e33-c4aedd4a451e/trash",
+      "payload": null,
+      "pathParameters": [
+        {
+          "name": "id",
+          "type": "string (UUID)",
+          "required": true,
+          "description": "The ID of the note to trash"
+        }
+      ],
+      "queryParameters": [],
+      "description": "Moves a note to trash.",
+      "exampleResponse": {
+        "success": true,
+        "msg": "Note trashed successfully",
+        "data": {
+          "note": {
+            "id": "2f9acc25-8ea0-402e-9e33-c4aedd4a451e",
+            "trashed": true,
+            "updated_at": "2025-12-30T16:25:00.000Z"
+          }
+        }
+      }
+    },
+    {
+      "apiName": "Restore Note",
+      "method": "PUT",
+      "endpoint": "/notes/:id/restore",
+      "fullUrlExample": "{{api_base}}/notes/2f9acc25-8ea0-402e-9e33-c4aedd4a451e/restore",
+      "payload": null,
+      "pathParameters": [
+        {
+          "name": "id",
+          "type": "string (UUID)",
+          "required": true,
+          "description": "The ID of the note to restore"
+        }
+      ],
+      "queryParameters": [],
+      "description": "Restores a note from trash.",
+      "exampleResponse": {
+        "success": true,
+        "msg": "Note restored successfully",
+        "data": {
+          "note": {
+            "id": "2f9acc25-8ea0-402e-9e33-c4aedd4a451e",
+            "trashed": false,
+            "updated_at": "2025-12-30T16:25:00.000Z"
+          }
+        }
+      }
+    },
+    {
+      "apiName": "Mark Note Synced",
+      "method": "PUT",
+      "endpoint": "/notes/:id/synced",
+      "fullUrlExample": "{{api_base}}/notes/2f9acc25-8ea0-402e-9e33-c4aedd4a451e/synced",
+      "payload": null,
+      "pathParameters": [
+        {
+          "name": "id",
+          "type": "string (UUID)",
+          "required": true,
+          "description": "The ID of the note to mark as synced"
+        }
+      ],
+      "queryParameters": [],
+      "description": "Marks a note as synced (typically used for sync status tracking).",
+      "exampleResponse": {
+        "success": true,
+        "msg": "Note marked as synced",
+        "data": {
+          "note": {
+            "id": "2f9acc25-8ea0-402e-9e33-c4aedd4a451e",
+            "synced": true,
+            "updated_at": "2025-12-30T16:25:00.000Z"
+          }
+        }
+      }
+    },
+    {
+      "apiName": "Move Note To Notebook",
+      "method": "PUT",
+      "endpoint": "/notes/:id/notebook/:notebookId",
+      "fullUrlExample": "{{api_base}}/notes/2f9acc25-8ea0-402e-9e33-c4aedd4a451e/notebook/1",
+      "payload": {
+        "notebook_id": "number (required)"
+      },
+      "pathParameters": [
+        {
+          "name": "id",
+          "type": "string (UUID)",
+          "required": true,
+          "description": "The ID of the note"
+        },
+        {
+          "name": "notebookId",
+          "type": "number",
+          "required": true,
+          "description": "The ID of the target notebook"
+        }
+      ],
+      "queryParameters": [],
+      "description": "Moves a note to a different notebook.",
+      "exampleRequest": {
+        "notebook_id": 2
+      },
+      "exampleResponse": {
+        "success": true,
+        "msg": "Note moved to notebook successfully",
+        "data": {
+          "note": {
+            "id": "2f9acc25-8ea0-402e-9e33-c4aedd4a451e",
+            "notebook_id": 2,
+            "updated_at": "2025-12-30T16:25:00.000Z"
+          }
+        }
+      }
+    },
+    {
+      "apiName": "Get Note Files",
+      "method": "GET",
+      "endpoint": "/notes/:id/files",
+      "fullUrlExample": "{{api_base}}/notes/2f9acc25-8ea0-402e-9e33-c4aedd4a451e/files",
+      "payload": null,
+      "pathParameters": [
+        {
+          "name": "id",
+          "type": "string (UUID)",
+          "required": true,
+          "description": "The ID of the note"
+        }
+      ],
+      "queryParameters": [],
+      "description": "Retrieves all files attached to a specific note.",
+      "exampleResponse": {
+        "success": true,
+        "data": {
+          "files": [
+            {
+              "id": 1,
+              "filename": "document.pdf",
+              "file_url": "https://example.com/files/document.pdf",
+              "description": "File description",
+              "note_id": "2f9acc25-8ea0-402e-9e33-c4aedd4a451e"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "apiName": "Get Note Tasks",
+      "method": "GET",
+      "endpoint": "/notes/:id/tasks",
+      "fullUrlExample": "{{api_base}}/notes/2f9acc25-8ea0-402e-9e33-c4aedd4a451e/tasks",
+      "payload": null,
+      "pathParameters": [
+        {
+          "name": "id",
+          "type": "string (UUID)",
+          "required": true,
+          "description": "The ID of the note"
+        }
+      ],
+      "queryParameters": [],
+      "description": "Retrieves all tasks attached to a specific note.",
+      "exampleResponse": {
+        "success": true,
+        "data": {
+          "tasks": [
+            {
+              "id": 1,
+              "label": "Task label",
+              "description": "Task description",
+              "note_id": "2f9acc25-8ea0-402e-9e33-c4aedd4a451e",
+              "completed": false,
+              "sort_order": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "apiName": "Add Tag To Note",
+      "method": "POST",
+      "endpoint": "/notes/addTagToNote",
+      "fullUrlExample": "{{api_base}}/notes/addTagToNote",
+      "payload": {
+        "note_id": "string (UUID, required)",
+        "tag_id": "number (required)"
+      },
+      "queryParameters": [],
+      "description": "Adds a tag to a note.",
+      "exampleRequest": {
+        "note_id": "2f9acc25-8ea0-402e-9e33-c4aedd4a451e",
+        "tag_id": 1
+      },
+      "exampleResponse": {
+        "success": true,
+        "msg": "Tag added to note successfully",
+        "data": {
+          "noteTag": {
+            "note_id": "2f9acc25-8ea0-402e-9e33-c4aedd4a451e",
+            "tag_id": 1
+          }
+        }
+      }
+    },
+    {
+      "apiName": "Remove Tag From Note",
+      "method": "DELETE",
+      "endpoint": "/notes/removeTagFromNote",
+      "fullUrlExample": "{{api_base}}/notes/removeTagFromNote",
+      "payload": {
+        "note_id": "string (UUID, required)",
+        "tag_id": "number (required)"
+      },
+      "queryParameters": [],
+      "description": "Removes a tag from a note.",
+      "exampleRequest": {
+        "note_id": "2f9acc25-8ea0-402e-9e33-c4aedd4a451e",
+        "tag_id": 1
+      },
+      "exampleResponse": {
+        "success": true,
+        "msg": "Tag removed from note successfully"
+      }
+    }
+  ],
+  "Tags": [
+    {
+      "apiName": "Create Tag",
+      "method": "POST",
+      "endpoint": "/tags",
+      "fullUrlExample": "{{api_base}}/tags",
+      "payload": {
+        "name": "string (required)",
+        "color_id": "number (optional)"
+      },
+      "queryParameters": [],
+      "description": "Creates a new tag that can be used to categorize notes.",
+      "exampleRequest": {
+        "name": "Important",
+        "color_id": 1
+      },
+      "exampleResponse": {
+        "success": true,
+        "msg": "Tag created successfully",
+        "data": {
+          "tag": {
+            "id": 1,
+            "name": "Important",
+            "color_id": 1,
+            "user_id": 1,
+            "created_at": "2025-12-30T16:17:13.040Z",
+            "updated_at": "2025-12-30T16:17:13.040Z"
+          }
+        }
+      }
+    },
+    {
+      "apiName": "Get All Tags",
+      "method": "GET",
+      "endpoint": "/tags",
+      "fullUrlExample": "{{api_base}}/tags",
+      "payload": null,
+      "queryParameters": [],
+      "description": "Retrieves all tags for the authenticated user.",
+      "exampleResponse": {
+        "success": true,
+        "data": {
+          "tags": [
+            {
+              "id": 1,
+              "name": "Important",
+              "color_id": 1,
+              "color": {
+                "id": 1,
+                "name": "Indigo",
+                "hex_code": "#6366F1"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "apiName": "Get Tag By ID",
+      "method": "GET",
+      "endpoint": "/tags/getTagById",
+      "fullUrlExample": "{{api_base}}/tags/getTagById?id=1",
+      "payload": null,
+      "queryParameters": [
+        {
+          "name": "id",
+          "type": "number",
+          "required": true,
+          "description": "The ID of the tag to retrieve"
+        }
+      ],
+      "description": "Fetches a single tag by its ID.",
+      "exampleResponse": {
+        "success": true,
+        "data": {
+          "tag": {
+            "id": 1,
+            "name": "Important",
+            "color_id": 1,
+            "color": {
+              "id": 1,
+              "name": "Indigo",
+              "hex_code": "#6366F1"
+            }
+          }
+        }
+      }
+    },
+    {
+      "apiName": "Update Tag",
+      "method": "PUT",
+      "endpoint": "/tags/:id",
+      "fullUrlExample": "{{api_base}}/tags/1",
+      "payload": {
+        "id": "number (required, must match path :id)",
+        "name": "string (optional)",
+        "color_id": "number (optional)"
+      },
+      "pathParameters": [
+        {
+          "name": "id",
+          "type": "number",
+          "required": true,
+          "description": "The ID of the tag to update"
+        }
+      ],
+      "queryParameters": [],
+      "description": "Updates an existing tag. Only provided fields are updated.",
+      "exampleRequest": {
+        "id": 1,
+        "name": "Updated Tag Name",
+        "color_id": 2
+      },
+      "exampleResponse": {
+        "success": true,
+        "msg": "Tag updated successfully",
+        "data": {
+          "tag": {
+            "id": 1,
+            "name": "Updated Tag Name",
+            "color_id": 2,
+            "updated_at": "2025-12-30T16:25:00.000Z"
+          }
+        }
+      }
+    },
+    {
+      "apiName": "Delete Tag",
+      "method": "DELETE",
+      "endpoint": "/tags/:id",
+      "fullUrlExample": "{{api_base}}/tags/1",
+      "payload": null,
+      "pathParameters": [
+        {
+          "name": "id",
+          "type": "number",
+          "required": true,
+          "description": "The ID of the tag to delete"
+        }
+      ],
+      "queryParameters": [],
+      "description": "Permanently deletes a tag.",
+      "exampleResponse": {
+        "success": true,
+        "msg": "Tag deleted successfully"
+      }
+    },
+    {
+      "apiName": "Get Colors",
+      "method": "GET",
+      "endpoint": "/tags/colors",
+      "fullUrlExample": "{{api_base}}/tags/colors",
+      "payload": null,
+      "queryParameters": [],
+      "description": "Retrieves all available colors (same as /colors endpoint).",
+      "exampleResponse": {
+        "success": true,
+        "data": {
+          "colors": [
+            {
+              "id": 1,
+              "name": "Indigo",
+              "hex_code": "#6366F1"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "Files": [
+    {
+      "apiName": "Upload File",
+      "method": "POST",
+      "endpoint": "/files",
+      "fullUrlExample": "{{api_base}}/files",
+      "payload": "FormData: file (file, required), note_id (string UUID, optional), description (string, optional)",
+      "queryParameters": [],
+      "description": "Uploads a file. Can optionally be attached to a note during upload.",
+      "exampleRequest": "FormData with file and optional note_id and description",
+      "exampleResponse": {
+        "success": true,
+        "msg": "File uploaded successfully",
+        "data": {
+          "file": {
+            "id": 1,
+            "filename": "document.pdf",
+            "file_url": "https://example.com/files/document.pdf",
+            "description": "File description",
+            "note_id": "2f9acc25-8ea0-402e-9e33-c4aedd4a451e",
+            "created_at": "2025-12-30T16:17:13.040Z",
+            "updated_at": "2025-12-30T16:17:13.040Z"
+          }
+        }
+      }
+    },
+    {
+      "apiName": "Get All Files",
+      "method": "GET",
+      "endpoint": "/files",
+      "fullUrlExample": "{{api_base}}/files",
+      "payload": null,
+      "queryParameters": [],
+      "description": "Retrieves all files for the authenticated user.",
+      "exampleResponse": {
+        "success": true,
+        "data": {
+          "files": [
+            {
+              "id": 1,
+              "filename": "document.pdf",
+              "file_url": "https://example.com/files/document.pdf",
+              "description": "File description",
+              "note_id": "2f9acc25-8ea0-402e-9e33-c4aedd4a451e",
+              "created_at": "2025-12-30T16:17:13.040Z"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "apiName": "Get File By ID",
+      "method": "GET",
+      "endpoint": "/files/:id",
+      "fullUrlExample": "{{api_base}}/files/1",
+      "payload": null,
+      "pathParameters": [
+        {
+          "name": "id",
+          "type": "number",
+          "required": true,
+          "description": "The ID of the file to retrieve"
+        }
+      ],
+      "queryParameters": [],
+      "description": "Fetches a single file by its ID.",
+      "exampleResponse": {
+        "success": true,
+        "data": {
+          "file": {
+            "id": 1,
+            "filename": "document.pdf",
+            "file_url": "https://example.com/files/document.pdf",
+            "description": "File description",
+            "note_id": "2f9acc25-8ea0-402e-9e33-c4aedd4a451e",
+            "created_at": "2025-12-30T16:17:13.040Z",
+            "updated_at": "2025-12-30T16:17:13.040Z"
+          }
+        }
+      }
+    },
+    {
+      "apiName": "Update File Metadata",
+      "method": "PUT",
+      "endpoint": "/files/:id",
+      "fullUrlExample": "{{api_base}}/files/1",
+      "payload": {
+        "id": "number (required, must match path :id)",
+        "filename": "string (optional)",
+        "description": "string (optional)"
+      },
+      "pathParameters": [
+        {
+          "name": "id",
+          "type": "number",
+          "required": true,
+          "description": "The ID of the file to update"
+        }
+      ],
+      "queryParameters": [],
+      "description": "Updates file metadata (filename and description).",
+      "exampleRequest": {
+        "id": 1,
+        "filename": "updated_document.pdf",
+        "description": "Updated description"
+      },
+      "exampleResponse": {
+        "success": true,
+        "msg": "File updated successfully",
+        "data": {
+          "file": {
+            "id": 1,
+            "filename": "updated_document.pdf",
+            "description": "Updated description",
+            "updated_at": "2025-12-30T16:25:00.000Z"
+          }
+        }
+      }
+    },
+    {
+      "apiName": "Delete File",
+      "method": "DELETE",
+      "endpoint": "/files/:id",
+      "fullUrlExample": "{{api_base}}/files/1",
+      "payload": null,
+      "pathParameters": [
+        {
+          "name": "id",
+          "type": "number",
+          "required": true,
+          "description": "The ID of the file to delete"
+        }
+      ],
+      "queryParameters": [],
+      "description": "Permanently deletes a file.",
+      "exampleResponse": {
+        "success": true,
+        "msg": "File deleted successfully"
+      }
+    },
+    {
+      "apiName": "Attach File To Note",
+      "method": "PUT",
+      "endpoint": "/files/:id/note/:noteId",
+      "fullUrlExample": "{{api_base}}/files/1/note/2f9acc25-8ea0-402e-9e33-c4aedd4a451e",
+      "payload": null,
+      "pathParameters": [
+        {
+          "name": "id",
+          "type": "number",
+          "required": true,
+          "description": "The ID of the file"
+        },
+        {
+          "name": "noteId",
+          "type": "string (UUID)",
+          "required": true,
+          "description": "The ID of the note to attach the file to"
+        }
+      ],
+      "queryParameters": [],
+      "description": "Attaches an existing file to a note.",
+      "exampleResponse": {
+        "success": true,
+        "msg": "File attached to note successfully",
+        "data": {
+          "file": {
+            "id": 1,
+            "note_id": "2f9acc25-8ea0-402e-9e33-c4aedd4a451e",
+            "updated_at": "2025-12-30T16:25:00.000Z"
+          }
+        }
+      }
+    },
+    {
+      "apiName": "Detach File From Note",
+      "method": "DELETE",
+      "endpoint": "/files/:id/note",
+      "fullUrlExample": "{{api_base}}/files/1/note",
+      "payload": null,
+      "pathParameters": [
+        {
+          "name": "id",
+          "type": "number",
+          "required": true,
+          "description": "The ID of the file"
+        }
+      ],
+      "queryParameters": [],
+      "description": "Detaches a file from its associated note (sets note_id to null).",
+      "exampleResponse": {
+        "success": true,
+        "msg": "File detached from note successfully",
+        "data": {
+          "file": {
+            "id": 1,
+            "note_id": null,
+            "updated_at": "2025-12-30T16:25:00.000Z"
+          }
+        }
+      }
+    }
+  ],
+  "Tasks": [
+    {
+      "apiName": "Create Task",
+      "method": "POST",
+      "endpoint": "/tasks/createTask",
+      "fullUrlExample": "{{api_base}}/tasks/createTask",
+      "payload": {
+        "note_id": "string (UUID, optional – null if standalone task)",
+        "label": "string (required)",
+        "description": "string (optional)",
+        "due_date": "string (ISO datetime, optional – maps to start_date)",
+        "start_date": "string (ISO datetime, optional – direct alternative to due_date)",
+        "start_time": "string (ISO datetime, optional)",
+        "end_time": "string (ISO datetime, optional)",
+        "reminder": "string (ISO datetime, optional)",
+        "assigned_to": "string (user_id or email, optional)",
+        "priority": "string (optional – 'low', 'medium', 'high')",
+        "flagged": "boolean (optional, default false)",
+        "sort_order": "number (optional – auto-calculated if omitted)",
+        "completed": "boolean (optional, default false)"
+      },
+      "queryParameters": [],
+      "description": "Creates a new task. Can be attached to a note via note_id or exist independently.",
+      "exampleRequest": {
+        "label": "Task label",
+        "description": "Task description",
+        "due_date": "2024-12-31T00:00:00Z",
+        "start_time": "2024-12-31T08:00:00Z",
+        "end_time": "2024-12-31T09:00:00Z",
+        "reminder": "2024-12-30T08:00:00Z",
+        "assigned_to": "user_id_or_email",
+        "priority": "high",
+        "flagged": false,
+        "sort_order": 0,
+        "completed": false
+      },
+      "exampleResponse": {
+        "success": true,
+        "msg": "Task created successfully",
+        "data": {
+          "task": {
+            "id": 4,
+            "note_id": null,
+            "label": "Task label",
+            "description": "Task description",
+            "start_date": "2024-12-31",
+            "start_time": "2024-12-31T08:00:00Z",
+            "end_time": "2024-12-31T09:00:00Z",
+            "reminder": "2024-12-30T08:00:00Z",
+            "assigned_to": "user_id_or_email",
+            "priority": "high",
+            "flagged": false,
+            "sort_order": 0,
+            "completed": false,
+            "created_at": "2025-12-30T16:17:13.040Z",
+            "updated_at": "2025-12-30T16:17:13.040Z"
+          }
+        }
+      },
+      "responseNotes": "due_date is converted to start_date (date portion only). start_time/end_time are stored separately."
+    },
+    {
+      "apiName": "Get Task By ID",
+      "method": "GET",
+      "endpoint": "/tasks/getTaskById",
+      "fullUrlExample": "{{api_base}}/tasks/getTaskById?id={{task_id}}",
+      "payload": null,
+      "queryParameters": [
+        {
+          "name": "id",
+          "type": "number",
+          "required": true,
+          "description": "The ID of the task to retrieve"
+        }
+      ],
+      "description": "Fetches a single task by its ID.",
+      "exampleResponse": {
+        "success": true,
+        "data": {
+          "task": {
+            "id": 4,
+            "note_id": null,
+            "label": "Task label",
+            "description": "Task description",
+            "start_date": "2024-12-31",
+            "start_time": "2024-12-31T08:00:00Z",
+            "end_time": "2024-12-31T09:00:00Z",
+            "reminder": "2024-12-30T08:00:00Z",
+            "priority": "high",
+            "flagged": false,
+            "completed": false,
+            "sort_order": 0,
+            "created_at": "2025-12-30T16:17:13.040Z",
+            "updated_at": "2025-12-30T16:17:13.040Z"
+          }
+        }
+      }
+    },
+    {
+      "apiName": "Update Task",
+      "method": "PUT",
+      "endpoint": "/tasks/updateTask",
+      "fullUrlExample": "{{api_base}}/tasks/updateTask",
+      "payload": {
+        "id": "number (required)",
+        "label": "string (optional)",
+        "description": "string (optional)",
+        "due_date": "string (ISO datetime, optional – maps to start_date)",
+        "start_date": "string (ISO datetime, optional)",
+        "start_time": "string (ISO datetime, optional)",
+        "end_time": "string (ISO datetime, optional)",
+        "reminder": "string (ISO datetime, optional)",
+        "assigned_to": "string (optional)",
+        "priority": "string (optional – 'low', 'medium', 'high')",
+        "flagged": "boolean (optional)",
+        "sort_order": "number (optional)"
+      },
+      "queryParameters": [],
+      "description": "Updates an existing task. Only provided fields are updated.",
+      "exampleRequest": {
+        "id": 4,
+        "label": "Updated task label",
+        "description": "Updated description",
+        "priority": "medium",
+        "flagged": true,
+        "sort_order": 1
+      },
+      "exampleResponse": {
+        "success": true,
+        "msg": "Task updated successfully",
+        "data": {
+          "task": {
+            "id": 4,
+            "label": "Updated task label",
+            "description": "Updated description",
+            "priority": "medium",
+            "flagged": true,
+            "sort_order": 1,
+            "updated_at": "2025-12-30T16:25:00.000Z"
+          }
+        }
+      }
+    },
+    {
+      "apiName": "Toggle Task Complete",
+      "method": "PUT",
+      "endpoint": "/tasks/toggleTaskComplete",
+      "fullUrlExample": "{{api_base}}/tasks/toggleTaskComplete",
+      "payload": {
+        "id": "number (required)",
+        "completed": "boolean (required)"
+      },
+      "queryParameters": [],
+      "description": "Toggles or explicitly sets the completion status of a task.",
+      "exampleRequest": {
+        "id": 4,
+        "completed": true
+      },
+      "exampleResponse": {
+        "success": true,
+        "msg": "Task completion status updated",
+        "data": {
+          "task": {
+            "id": 4,
+            "completed": true,
+            "updated_at": "2025-12-30T16:30:00.000Z"
+          }
+        }
+      }
+    },
+    {
+      "apiName": "Delete Task",
+      "method": "DELETE",
+      "endpoint": "/tasks/deleteTask",
+      "fullUrlExample": "{{api_base}}/tasks/deleteTask",
+      "payload": {
+        "id": "number (required)"
+      },
+      "queryParameters": [],
+      "description": "Permanently deletes a task.",
+      "exampleRequest": {
+        "id": 4
+      },
+      "exampleResponse": {
+        "success": true,
+        "msg": "Task deleted successfully"
+      }
+    },
+    {
+      "apiName": "Reorder Tasks",
+      "method": "PUT",
+      "endpoint": "/tasks/reorder",
+      "fullUrlExample": "{{api_base}}/tasks/reorder",
+      "payload": {
+        "tasks": "array of objects (required)",
+        "tasks[].id": "number (required)",
+        "tasks[].sort_order": "number (required)"
+      },
+      "queryParameters": [],
+      "description": "Reorders multiple tasks by assigning new sort_order values.",
+      "exampleRequest": {
+        "tasks": [
+          {
+            "id": 1,
+            "sort_order": 0
+          },
+          {
+            "id": 2,
+            "sort_order": 1
+          },
+          {
+            "id": 3,
+            "sort_order": 2
+          }
+        ]
+      },
+      "exampleResponse": {
+        "success": true,
+        "msg": "Tasks reordered successfully"
+      }
+    },
+    {
+      "apiName": "Get All Tasks",
+      "method": "GET",
+      "endpoint": "/tasks/getAllTasks",
+      "fullUrlExample": "{{api_base}}/tasks/getAllTasks",
+      "payload": null,
+      "queryParameters": [],
+      "description": "Retrieves all tasks for the authenticated user (both note-attached and standalone).",
+      "exampleResponse": {
+        "success": true,
+        "data": {
+          "tasks": [
+            {
+              "id": 1,
+              "note_id": "2f9acc25-8ea0-402e-9e33-c4aedd4a451e",
+              "label": "Learn the chapter 1",
+              "description": "detials",
+              "start_date": "2025-12-22",
+              "start_time": "07:00:00",
+              "end_time": "09:00:00",
+              "reminder": null,
+              "assigned_to": null,
+              "priority": "low",
+              "flagged": false,
+              "completed": false,
+              "sort_order": 0,
+              "created_at": "2025-12-23T17:51:00.000Z",
+              "updated_at": "2025-12-24T09:53:50.000Z",
+              "due_date": "2025-12-22"
+            }
+          ],
+          "count": 3
+        }
+      },
+      "responseNotes": "Returns all tasks with a count field."
+    },
+    {
+      "apiName": "Get Note Tasks",
+      "method": "GET",
+      "endpoint": "/tasks/getNoteTasks",
+      "fullUrlExample": "{{api_base}}/tasks/getNoteTasks?note_id={{note_id}}",
+      "payload": null,
+      "queryParameters": [
+        {
+          "name": "note_id",
+          "type": "string (UUID)",
+          "required": true,
+          "description": "The note ID to fetch tasks for"
+        }
+      ],
+      "description": "Retrieves all tasks attached to a specific note.",
+      "exampleResponse": {
+        "success": true,
+        "data": {
+          "tasks": [
+            {
+              "id": 1,
+              "note_id": "{{note_id}}",
+              "label": "Learn the chapter 1",
+              "description": "details",
+              "priority": "low",
+              "completed": false,
+              "sort_order": 0,
+              "created_at": "2025-12-23T17:51:00.000Z",
+              "updated_at": "2025-12-24T09:53:50.000Z"
+            }
+          ],
+          "count": 1
+        }
+      }
+    }
+  ],
+  "Calendar": [
+    {
+      "apiName": "Get Calendar Events By Date",
+      "method": "GET",
+      "endpoint": "/calendar/getCalendarEventsByDate",
+      "fullUrlExample": "{{api_base}}/calendar/getCalendarEventsByDate?date=2025-12-22&view=month",
+      "payload": null,
+      "queryParameters": [
+        {
+          "name": "date",
+          "type": "string",
+          "format": "YYYY-MM-DD",
+          "required": true,
+          "description": "The date to center the view on"
+        },
+        {
+          "name": "view",
+          "type": "string",
+          "required": true,
+          "values": [
+            "day",
+            "week",
+            "month"
+          ],
+          "description": "View type: day, week, or month"
+        }
+      ],
+      "description": "Fetches calendar events (tasks and notes with dates) for the specified date and view range.",
+      "exampleResponse": {
+        "success": true,
+        "data": {
+          "items": [
+            {
+              "id": "task_1",
+              "type": "task",
+              "title": "Learn the chapter 1",
+              "start": "2025-12-22T07:00:00.000Z",
+              "end": "2025-12-22T09:00:00.000Z",
+              "allDay": false,
+              "start_date": "2025-12-22",
+              "start_time": "07:00:00",
+              "end_time": "09:00:00",
+              "completed": false,
+              "color": "#f44336",
+              "sourceId": 1
+            },
+            {
+              "id": "note_7d892432-b91a-4c03-96f7-185edad7c9bc",
+              "type": "note",
+              "title": "Scratch Pad",
+              "start": "2025-12-30T11:07:26.000Z",
+              "end": null,
+              "allDay": true,
+              "completed": false,
+              "color": "#00ff00",
+              "sourceId": "7d892432-b91a-4c03-96f7-185edad7c9bc"
+            },
+            {
+              "id": "note_2abe55b6-108c-4515-bb4a-5c017a42b4e1",
+              "type": "note",
+              "title": "Scratch Pad",
+              "start": "2025-12-30T11:07:11.000Z",
+              "end": null,
+              "allDay": true,
+              "completed": false,
+              "color": "#00ff00",
+              "sourceId": "2abe55b6-108c-4515-bb4a-5c017a42b4e1"
+            },
+            {
+              "id": "note_2f3b2850-f625-46f4-93c7-d5cb8344f0d9",
+              "type": "note",
+              "title": "Scratch Pad",
+              "start": "2025-12-30T11:07:11.000Z",
+              "end": null,
+              "allDay": true,
+              "completed": false,
+              "color": "#00ff00",
+              "sourceId": "2f3b2850-f625-46f4-93c7-d5cb8344f0d9"
+            },
+            {
+              "id": "note_cddb8169-78b7-41f6-9320-5add835610da",
+              "type": "note",
+              "title": "Scratch Pad",
+              "start": "2025-12-30T11:06:44.000Z",
+              "end": null,
+              "allDay": true,
+              "completed": false,
+              "color": "#00ff00",
+              "sourceId": "cddb8169-78b7-41f6-9320-5add835610da"
+            },
+            {
+              "id": "note_da8b49de-d128-4cc8-867f-b4bc80705ad3",
+              "type": "note",
+              "title": "Scratch Pad",
+              "start": "2025-12-30T11:06:30.000Z",
+              "end": null,
+              "allDay": true,
+              "completed": false,
+              "color": "#00ff00",
+              "sourceId": "da8b49de-d128-4cc8-867f-b4bc80705ad3"
+            },
+            {
+              "id": "note_1c9f3d85-b368-4a5e-93c5-08c9ebbcc713",
+              "type": "note",
+              "title": "Scratch Pad",
+              "start": "2025-12-30T11:05:41.000Z",
+              "end": null,
+              "allDay": true,
+              "completed": false,
+              "color": "#00ff00",
+              "sourceId": "1c9f3d85-b368-4a5e-93c5-08c9ebbcc713"
+            },
+            {
+              "id": "note_be78cd1a-c6f0-4afe-8ceb-4229ea023506",
+              "type": "note",
+              "title": "Scratch Pad",
+              "start": "2025-12-30T11:02:44.000Z",
+              "end": null,
+              "allDay": true,
+              "completed": false,
+              "color": "#00ff00",
+              "sourceId": "be78cd1a-c6f0-4afe-8ceb-4229ea023506"
+            },
+            {
+              "id": "note_b2b65aba-cec7-4a80-b115-9bb715314949",
+              "type": "note",
+              "title": "Scratch Pad",
+              "start": "2025-12-30T11:02:29.000Z",
+              "end": null,
+              "allDay": true,
+              "completed": false,
+              "color": "#00ff00",
+              "sourceId": "b2b65aba-cec7-4a80-b115-9bb715314949"
+            },
+            {
+              "id": "note_2f52c58d-de6a-45e9-ad82-6704f157560c",
+              "type": "note",
+              "title": "Scratch Pad",
+              "start": "2025-12-30T11:01:17.000Z",
+              "end": null,
+              "allDay": true,
+              "completed": false,
+              "color": "#00ff00",
+              "sourceId": "2f52c58d-de6a-45e9-ad82-6704f157560c"
+            },
+            {
+              "id": "note_ba53a4cb-11ba-4184-a768-70f78a5182ad",
+              "type": "note",
+              "title": "Scratch Pad",
+              "start": "2025-12-30T11:00:55.000Z",
+              "end": null,
+              "allDay": true,
+              "completed": false,
+              "color": "#00ff00",
+              "sourceId": "ba53a4cb-11ba-4184-a768-70f78a5182ad"
+            },
+            {
+              "id": "note_2f9acc25-8ea0-402e-9e33-c4aedd4a451e",
+              "type": "note",
+              "title": "Science",
+              "start": "2025-12-23T17:47:12.000Z",
+              "end": null,
+              "allDay": true,
+              "completed": false,
+              "color": "#00ff00",
+              "sourceId": "2f9acc25-8ea0-402e-9e33-c4aedd4a451e"
+            },
+            {
+              "id": "note_5bad92e6-41d8-43ce-8d3b-33e9f25071f9",
+              "type": "note",
+              "title": "Maths",
+              "start": "2025-12-23T17:47:44.000Z",
+              "end": null,
+              "allDay": true,
+              "completed": false,
+              "color": "#00ff00",
+              "sourceId": "5bad92e6-41d8-43ce-8d3b-33e9f25071f9"
+            },
+            {
+              "id": "note_813927d4-c79f-409b-822d-c694ad870b53",
+              "type": "note",
+              "title": "Geometry",
+              "start": "2025-12-23T17:48:36.000Z",
+              "end": null,
+              "allDay": true,
+              "completed": false,
+              "color": "#00ff00",
+              "sourceId": "813927d4-c79f-409b-822d-c694ad870b53"
+            },
+            {
+              "id": "note_5d1fa6f7-4900-4168-a1a1-9e682ce01cb9",
+              "type": "note",
+              "title": "Science 2",
+              "start": "2025-12-23T19:34:23.000Z",
+              "end": null,
+              "allDay": true,
+              "completed": false,
+              "color": "#00ff00",
+              "sourceId": "5d1fa6f7-4900-4168-a1a1-9e682ce01cb9"
+            },
+            {
+              "id": "note_88c21460-6071-4247-8bd7-487cfb560246",
+              "type": "note",
+              "title": "Politcs",
+              "start": "2025-12-23T17:49:01.000Z",
+              "end": null,
+              "allDay": true,
+              "completed": false,
+              "color": "#00ff00",
+              "sourceId": "88c21460-6071-4247-8bd7-487cfb560246"
+            },
+            {
+              "id": "note_fce0a8a7-586c-4009-94ad-5e2d6f5adca0",
+              "type": "note",
+              "title": "Geometrics",
+              "start": "2025-12-23T17:49:28.000Z",
+              "end": null,
+              "allDay": true,
+              "completed": false,
+              "color": "#00ff00",
+              "sourceId": "fce0a8a7-586c-4009-94ad-5e2d6f5adca0"
+            }
+          ]
+        }
+      },
+      "responseNotes": "Returns an array of calendar items. Items can be of type 'task' (with start/end time) or 'note' (typically all-day, using creation timestamp as date). The response covers events within the month/week/day range centered on the provided date."
+    }
+  ],
+  "Templates": [
+    {
+      "apiName": "Get All Templates",
+      "method": "GET",
+      "endpoint": "/templates/getAllTemplates",
+      "fullUrlExample": "{{api_base}}/templates/getAllTemplates",
+      "payload": null,
+      "queryParameters": [],
+      "description": "Retrieves all templates (both system and user-created templates).",
+      "exampleResponse": {
+        "success": true,
+        "data": {
+          "templates": [
+            {
+              "id": 1,
+              "title": "Meeting Notes",
+              "content": "Template content...",
+              "is_system": true,
+              "user_id": null,
+              "created_at": "2025-12-23T11:34:32.000Z"
+            },
+            {
+              "id": 2,
+              "title": "My Custom Template",
+              "content": "Custom template content...",
+              "is_system": false,
+              "user_id": 1,
+              "created_at": "2025-12-30T16:17:13.040Z"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "apiName": "Get System Templates",
+      "method": "GET",
+      "endpoint": "/templates/getSystemTemplates",
+      "fullUrlExample": "{{api_base}}/templates/getSystemTemplates",
+      "payload": null,
+      "queryParameters": [],
+      "description": "Retrieves only system/prebuilt templates.",
+      "exampleResponse": {
+        "success": true,
+        "data": {
+          "templates": [
+            {
+              "id": 1,
+              "title": "Meeting Notes",
+              "content": "Template content...",
+              "is_system": true,
+              "user_id": null,
+              "created_at": "2025-12-23T11:34:32.000Z"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "apiName": "Get User Templates",
+      "method": "GET",
+      "endpoint": "/templates/getMyTemplates",
+      "fullUrlExample": "{{api_base}}/templates/getMyTemplates",
+      "payload": null,
+      "queryParameters": [],
+      "description": "Retrieves only user-created templates for the authenticated user.",
+      "exampleResponse": {
+        "success": true,
+        "data": {
+          "templates": [
+            {
+              "id": 2,
+              "title": "My Custom Template",
+              "content": "Custom template content...",
+              "is_system": false,
+              "user_id": 1,
+              "created_at": "2025-12-30T16:17:13.040Z"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "apiName": "Get Template By ID",
+      "method": "GET",
+      "endpoint": "/templates/getTemplateById",
+      "fullUrlExample": "{{api_base}}/templates/getTemplateById?id=1",
+      "payload": null,
+      "queryParameters": [
+        {
+          "name": "id",
+          "type": "number",
+          "required": true,
+          "description": "The ID of the template to retrieve"
+        }
+      ],
+      "description": "Fetches a single template by its ID.",
+      "exampleResponse": {
+        "success": true,
+        "data": {
+          "template": {
+            "id": 1,
+            "title": "Meeting Notes",
+            "content": "Template content...",
+            "is_system": true,
+            "user_id": null,
+            "created_at": "2025-12-23T11:34:32.000Z",
+            "updated_at": "2025-12-23T11:34:32.000Z"
+          }
+        }
+      }
+    },
+    {
+      "apiName": "Create Template",
+      "method": "POST",
+      "endpoint": "/templates/createTemplate",
+      "fullUrlExample": "{{api_base}}/templates/createTemplate",
+      "payload": {
+        "title": "string (required)",
+        "content": "string (required)",
+        "is_system": "boolean (optional, default false)"
+      },
+      "queryParameters": [],
+      "description": "Creates a new user template.",
+      "exampleRequest": {
+        "title": "My Custom Template",
+        "content": "Template content here...",
+        "is_system": false
+      },
+      "exampleResponse": {
+        "success": true,
+        "msg": "Template created successfully",
+        "data": {
+          "template": {
+            "id": 2,
+            "title": "My Custom Template",
+            "content": "Template content here...",
+            "is_system": false,
+            "user_id": 1,
+            "created_at": "2025-12-30T16:17:13.040Z",
+            "updated_at": "2025-12-30T16:17:13.040Z"
+          }
+        }
+      }
+    },
+    {
+      "apiName": "Clone Template",
+      "method": "POST",
+      "endpoint": "/templates/cloneTemplate",
+      "fullUrlExample": "{{api_base}}/templates/cloneTemplate",
+      "payload": {
+        "template_id": "number (required)"
+      },
+      "queryParameters": [],
+      "description": "Clones a system or user template to create a new note or user template.",
+      "exampleRequest": {
+        "template_id": 1
+      },
+      "exampleResponse": {
+        "success": true,
+        "msg": "Template cloned successfully",
+        "data": {
+          "template": {
+            "id": 3,
+            "title": "Meeting Notes",
+            "content": "Template content...",
+            "is_system": false,
+            "user_id": 1,
+            "created_at": "2025-12-30T16:17:13.040Z"
+          }
+        }
+      }
+    },
+    {
+      "apiName": "Delete Template",
+      "method": "DELETE",
+      "endpoint": "/templates/deleteTemplate/:id",
+      "fullUrlExample": "{{api_base}}/templates/deleteTemplate/2",
+      "payload": null,
+      "pathParameters": [
+        {
+          "name": "id",
+          "type": "number",
+          "required": true,
+          "description": "The ID of the template to delete"
+        }
+      ],
+      "queryParameters": [],
+      "description": "Deletes a user-created template. System templates cannot be deleted.",
+      "exampleResponse": {
+        "success": true,
+        "msg": "Template deleted successfully"
+      }
+    }
+  ],
+  "Colors": [
+    {
+      "apiName": "Get All Colors",
+      "method": "GET",
+      "endpoint": "/colors",
+      "fullUrlExample": "{{api_base}}/colors",
+      "payload": null,
+      "queryParameters": [],
+      "description": "Retrieves the complete list of all available colors (system defaults + user-created custom colors).",
+      "exampleResponse": {
+        "success": true,
+        "data": {
+          "colors": [
+            {
+              "id": 1,
+              "name": "Indigo",
+              "hex_code": "#6366F1",
+              "created_at": "2025-12-23T11:34:32.000Z",
+              "updated_at": "2025-12-23T11:34:32.000Z"
+            },
+            {
+              "id": 2,
+              "name": "Purple",
+              "hex_code": "#A78BFA",
+              "created_at": "2025-12-23T11:34:32.000Z",
+              "updated_at": "2025-12-23T11:34:32.000Z"
+            },
+            {
+              "id": 3,
+              "name": "Emerald",
+              "hex_code": "#10B981",
+              "created_at": "2025-12-23T11:34:32.000Z",
+              "updated_at": "2025-12-23T11:34:32.000Z"
+            },
+            {
+              "id": 6,
+              "name": "Red",
+              "hex_code": "#FF0000",
+              "created_at": "2025-12-30T16:01:04.989Z",
+              "updated_at": "2025-12-30T16:01:04.989Z"
+            }
+          ]
+        }
+      },
+      "responseNotes": "The response wraps colors in a 'colors' array inside 'data'. System colors and user-created colors are returned together."
+    },
+    {
+      "apiName": "Get Color By ID",
+      "method": "GET",
+      "endpoint": "/colors/:id",
+      "fullUrlExample": "{{api_base}}/colors/1",
+      "payload": null,
+      "pathParameters": [
+        {
+          "name": "id",
+          "type": "number",
+          "required": true,
+          "description": "The ID of the color to retrieve"
+        }
+      ],
+      "queryParameters": [],
+      "description": "Fetches a single color by its ID.",
+      "exampleResponse": {
+        "success": true,
+        "data": {
+          "color": {
+            "id": 1,
+            "name": "Indigo",
+            "hex_code": "#6366F1",
+            "created_at": "2025-12-23T11:34:32.000Z",
+            "updated_at": "2025-12-23T11:34:32.000Z"
+          }
+        }
+      },
+      "responseNotes": "Single color is returned wrapped in 'color' object inside 'data'."
+    },
+    {
+      "apiName": "Create Color",
+      "method": "POST",
+      "endpoint": "/colors",
+      "fullUrlExample": "{{api_base}}/colors",
+      "payload": {
+        "name": "string (required)",
+        "hex_code": "string (required, valid hex color code e.g. #FF0000)"
+      },
+      "queryParameters": [],
+      "description": "Creates a new custom color that can be used for stacks, notebooks, and tags.",
+      "exampleRequest": {
+        "name": "Red",
+        "hex_code": "#FF0000"
+      },
+      "exampleResponse": {
+        "success": true,
+        "msg": "Color created successfully",
+        "data": {
+          "color": {
+            "id": 6,
+            "name": "Red",
+            "hex_code": "#FF0000",
+            "created_at": "2025-12-30T16:01:04.989Z",
+            "updated_at": "2025-12-30T16:01:04.989Z"
+          }
+        }
+      }
+    },
+    {
+      "apiName": "Update Color",
+      "method": "PUT",
+      "endpoint": "/colors/:id",
+      "fullUrlExample": "{{api_base}}/colors/6",
+      "payload": {
+        "id": "number (required, must match path :id)",
+        "name": "string (optional)",
+        "hex_code": "string (optional, valid hex color code)"
+      },
+      "pathParameters": [
+        {
+          "name": "id",
+          "type": "number",
+          "required": true,
+          "description": "The ID of the color to update"
+        }
+      ],
+      "queryParameters": [],
+      "description": "Updates an existing custom color. At least one of name or hex_code must be provided. Only user-created colors can be updated.",
+      "exampleRequest": {
+        "id": 6,
+        "name": "Dark Red",
+        "hex_code": "#CC0000"
+      },
+      "exampleResponse": {
+        "success": true,
+        "msg": "Color updated successfully",
+        "data": {
+          "color": {
+            "id": 6,
+            "name": "Dark Red",
+            "hex_code": "#CC0000",
+            "created_at": "2025-12-30T16:01:04.989Z",
+            "updated_at": "2025-12-30T16:15:22.123Z"
+          }
+        }
+      }
+    },
+    {
+      "apiName": "Delete Color",
+      "method": "DELETE",
+      "endpoint": "/colors/:id",
+      "fullUrlExample": "{{api_base}}/colors/6",
+      "payload": null,
+      "pathParameters": [
+        {
+          "name": "id",
+          "type": "number",
+          "required": true,
+          "description": "The ID of the color to delete"
+        }
+      ],
+      "queryParameters": [],
+      "description": "Deletes a custom color. Only user-created colors can be deleted (system colors are protected).",
+      "exampleResponse": {
+        "success": true,
+        "msg": "Color deleted successfully"
+      }
+    }
+  ]
+}

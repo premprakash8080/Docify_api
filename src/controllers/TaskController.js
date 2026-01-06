@@ -1,8 +1,104 @@
 const Sequelize = require("sequelize");
 const Task = require("../models/task");
 const Note = require("../models/note");
+const { Op } = require("sequelize");
 
 const TaskController = () => {
+  /**
+   * Helper function to check for time-slot conflicts
+   * @param {number} userId - User ID
+   * @param {string} startDate - Start date (YYYY-MM-DD)
+   * @param {string} startTime - Start time (HH:MM:SS or HH:MM)
+   * @param {string} endTime - End time (HH:MM:SS or HH:MM)
+   * @param {number} excludeTaskId - Task ID to exclude from conflict check (for updates)
+   * @returns {Promise<boolean>} - Returns true if conflict exists
+   */
+  const checkTimeSlotConflict = async (userId, startDate, startTime, endTime, excludeTaskId = null) => {
+    if (!startDate || !startTime || !endTime) {
+      return false; // No conflict if time information is incomplete
+    }
+
+    // Get all user's notes
+    const userNotes = await Note.findAll({
+      where: {
+        user_id: userId,
+      },
+      attributes: ["id"],
+    });
+
+    const noteIds = userNotes.map(note => note.id);
+
+    // Build where clause to find tasks on the same date
+    // Tasks must belong to user's notes (we don't check standalone tasks with note_id=null for ownership)
+    const whereConditions = [];
+    
+    if (noteIds.length > 0) {
+      whereConditions.push({ note_id: { [Op.in]: noteIds } });
+    }
+
+    // If no notes, return false (no tasks to check)
+    if (whereConditions.length === 0) {
+      return false;
+    }
+
+    const whereClause = {
+      start_date: startDate,
+      start_time: { [Op.ne]: null },
+      end_time: { [Op.ne]: null },
+      [Op.or]: whereConditions,
+    };
+
+    // Exclude the current task if updating
+    if (excludeTaskId) {
+      whereClause.id = { [Op.ne]: excludeTaskId };
+    }
+
+    // Get all tasks on the same date with time slots
+    const existingTasks = await Task.findAll({
+      where: whereClause,
+      attributes: ["id", "start_time", "end_time"],
+    });
+
+    // Convert times to minutes for easier comparison
+    const timeToMinutes = (timeStr) => {
+      if (!timeStr) return null;
+      const time = typeof timeStr === 'string' ? timeStr : timeStr.toString();
+      const parts = time.split(':');
+      const hours = parseInt(parts[0]) || 0;
+      const minutes = parseInt(parts[1] || 0);
+      return hours * 60 + minutes;
+    };
+
+    const newStartMinutes = timeToMinutes(startTime);
+    const newEndMinutes = timeToMinutes(endTime);
+
+    if (newStartMinutes === null || newEndMinutes === null) {
+      return false;
+    }
+
+    // Validate that start time is before end time
+    if (newStartMinutes >= newEndMinutes) {
+      return false; // Invalid time range, but don't treat as conflict
+    }
+
+    // Check for overlaps
+    // Two time slots overlap if: start1 < end2 AND start2 < end1
+    for (const task of existingTasks) {
+      const existingStartMinutes = timeToMinutes(task.start_time);
+      const existingEndMinutes = timeToMinutes(task.end_time);
+
+      if (existingStartMinutes === null || existingEndMinutes === null) {
+        continue;
+      }
+
+      // Check if time slots overlap
+      if (newStartMinutes < existingEndMinutes && existingStartMinutes < newEndMinutes) {
+        return true; // Conflict found
+      }
+    }
+
+    return false; // No conflict
+  };
   /**
    * @description Create a new task under a note
    * @param req.user - User from authentication middleware
@@ -22,7 +118,7 @@ const TaskController = () => {
       }
 
       const {
-        note_id,
+        note_id = null,
         label,
         description,
         due_date,
@@ -58,6 +154,21 @@ const TaskController = () => {
             msg: "Note not found",
           });
         }
+      }
+
+      // Check for time-slot conflicts
+      const hasConflict = await checkTimeSlotConflict(
+        req.user.id,
+        due_date,
+        start_time,
+        end_time
+      );
+
+      if (hasConflict) {
+        return res.status(200).json({
+          success: false,
+          msg: "This time slot is already occupied",
+        });
       }
 
       // Get max sort_order for this note if not provided
@@ -131,27 +242,13 @@ const TaskController = () => {
       // Find task first
       const task = await Task.findOne({
         where: { id },
+        attributes: ["id", "label", "description", "start_date", "start_time", "end_time", "reminder", "assigned_to", "priority", "flagged", "sort_order", "completed"],
       });
 
       if (!task) {
         return res.status(404).json({
           success: false,
           msg: "Task not found",
-        });
-      }
-
-      // Verify note belongs to user
-      const note = await Note.findOne({
-        where: {
-          id: task.note_id,
-          user_id: req.user.id,
-        },
-      });
-
-      if (!note) {
-        return res.status(403).json({
-          success: false,
-          msg: "Access denied: Task does not belong to user",
         });
       }
 
@@ -246,6 +343,29 @@ const TaskController = () => {
           return res.status(403).json({
             success: false,
             msg: "Access denied: Task does not belong to user",
+          });
+        }
+      }
+
+      // Determine the final values for date and times (use new values if provided, otherwise keep existing)
+      const finalStartDate = due_date || start_date || task.start_date;
+      const finalStartTime = start_time !== undefined ? start_time : task.start_time;
+      const finalEndTime = end_time !== undefined ? end_time : task.end_time;
+
+      // Check for time-slot conflicts only if date and times are being set/changed
+      if (finalStartDate && finalStartTime && finalEndTime) {
+        const hasConflict = await checkTimeSlotConflict(
+          req.user.id,
+          finalStartDate,
+          finalStartTime,
+          finalEndTime,
+          task.id // Exclude current task from conflict check
+        );
+
+        if (hasConflict) {
+          return res.status(200).json({
+            success: false,
+            msg: "This time slot is already occupied",
           });
         }
       }

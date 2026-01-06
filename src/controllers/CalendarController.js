@@ -7,6 +7,7 @@ const User = require("../models/user");
 const NoteTag = require("../models/noteTag");
 const File = require("../models/file");
 const Task = require("../models/task");
+const ExternalEvent = require("../models/externalEvent");
 const { Op } = require("sequelize");
 
 const calendarController = () => {
@@ -135,9 +136,9 @@ const calendarController = () => {
           break;
 
         case "week":
-          // Week view (Monday to Sunday)
+          // Week view (Sunday to Saturday)
           const dayOfWeek = targetDate.getDay();
-          const diff = targetDate.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); // Adjust to Monday
+          const diff = targetDate.getDate() - dayOfWeek; // Adjust to Sunday (day 0)
           startDate = new Date(targetDate.setDate(diff));
           startDate.setHours(0, 0, 0, 0);
           endDate = new Date(startDate);
@@ -782,12 +783,203 @@ const calendarController = () => {
     }
   };
 
+  /**
+   * @description Get all external events (task templates) for the authenticated user
+   * @param req.user - User from authentication middleware
+   * @returns array of external events (task templates)
+   */
+  const getExternalEvents = async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          msg: "User not authenticated",
+        });
+      }
+
+      // Fetch all external events for the user
+      const externalEvents = await ExternalEvent.findAll({
+        where: {
+          user_id: req.user.id,
+        },
+        order: [["created_at", "ASC"]],
+        attributes: [
+          "id",
+          "title",
+          "variant",
+          "description",
+          "priority",
+          "start_time",
+          "end_time",
+          "reminder",
+          "assigned_to",
+          "flagged",
+        ],
+      });
+
+      // Format the response to match the expected format
+      const formattedEvents = externalEvents.map((event) => {
+        const eventData = event.toJSON();
+        return {
+          id: eventData.id.toString(),
+          title: eventData.title,
+          variant: eventData.variant || "primary",
+          description: eventData.description || null,
+          priority: eventData.priority || null,
+          start_time: eventData.start_time
+            ? typeof eventData.start_time === "string"
+              ? eventData.start_time.substring(0, 5) // Extract HH:MM from TIME format
+              : eventData.start_time.toString().substring(0, 5)
+            : null,
+          end_time: eventData.end_time
+            ? typeof eventData.end_time === "string"
+              ? eventData.end_time.substring(0, 5) // Extract HH:MM from TIME format
+              : eventData.end_time.toString().substring(0, 5)
+            : null,
+          reminder: eventData.reminder
+            ? typeof eventData.reminder === "string"
+              ? eventData.reminder.substring(0, 5) // Extract HH:MM from TIME format
+              : eventData.reminder.toString().substring(0, 5)
+            : null,
+          assigned_to: eventData.assigned_to || null,
+          flagged: eventData.flagged || false,
+        };
+      });
+
+      return res.status(200).json({
+        success: true,
+        msg: "External events fetched successfully",
+        data: {
+          externalEvents: formattedEvents,
+        },
+      });
+    } catch (error) {
+      console.error("Get external events error:", error);
+      return res.status(500).json({
+        success: false,
+        msg: "Internal server error",
+        error: error.message,
+      });
+    }
+  };
+
+  /**
+   * @description Create a new external event (task template) for the authenticated user
+   * @param req.user - User from authentication middleware
+   * @param req.body.title - Title of the external event (required)
+   * @param req.body.variant - Variant for UI styling (optional, default: "primary")
+   * @param req.body.description - Description (optional)
+   * @param req.body.priority - Priority level: "low", "medium", or "high" (optional)
+   * @param req.body.start_time - Default start time in HH:MM format (optional)
+   * @param req.body.end_time - Default end time in HH:MM format (optional)
+   * @param req.body.reminder - Default reminder time in HH:MM format (optional)
+   * @param req.body.assigned_to - Default assigned user ID or email (optional)
+   * @param req.body.flagged - Flagged status (optional, default: false)
+   * @returns created external event
+   */
+  const createExternalEvent = async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          msg: "User not authenticated",
+        });
+      }
+
+      const {
+        title,
+        variant,
+        description,
+        priority,
+        start_time,
+        end_time,
+        reminder,
+        assigned_to,
+        flagged,
+      } = req.body;
+
+      // Validate required fields
+      if (!title || !title.trim()) {
+        return res.status(400).json({
+          success: false,
+          msg: "Title is required",
+        });
+      }
+
+      // Validate priority if provided
+      if (priority && !["low", "medium", "high"].includes(priority)) {
+        return res.status(400).json({
+          success: false,
+          msg: "Priority must be 'low', 'medium', or 'high'",
+        });
+      }
+
+      // Create external event
+      const externalEvent = await ExternalEvent.create({
+        user_id: req.user.id,
+        title: title.trim(),
+        variant: variant || "primary",
+        description: description ? description.trim() : null,
+        priority: priority || null,
+        start_time: start_time || null,
+        end_time: end_time || null,
+        reminder: reminder || null,
+        assigned_to: assigned_to ? assigned_to.trim() : null,
+        flagged: flagged === true || flagged === "true" || false,
+      });
+
+      // Format the response to match the expected format
+      const eventData = externalEvent.toJSON();
+      const formattedEvent = {
+        id: eventData.id.toString(),
+        title: eventData.title,
+        variant: eventData.variant || "primary",
+        description: eventData.description || null,
+        priority: eventData.priority || null,
+        start_time: eventData.start_time
+          ? typeof eventData.start_time === "string"
+            ? eventData.start_time.substring(0, 5) // Extract HH:MM from TIME format
+            : eventData.start_time.toString().substring(0, 5)
+          : null,
+        end_time: eventData.end_time
+          ? typeof eventData.end_time === "string"
+            ? eventData.end_time.substring(0, 5) // Extract HH:MM from TIME format
+            : eventData.end_time.toString().substring(0, 5)
+          : null,
+        reminder: eventData.reminder
+          ? typeof eventData.reminder === "string"
+            ? eventData.reminder.substring(0, 5) // Extract HH:MM from TIME format
+            : eventData.reminder.toString().substring(0, 5)
+          : null,
+        assigned_to: eventData.assigned_to || null,
+        flagged: eventData.flagged || false,
+      };
+
+      return res.status(201).json({
+        success: true,
+        msg: "External event created successfully",
+        data: {
+          externalEvent: formattedEvent,
+        },
+      });
+    } catch (error) {
+      console.error("Create external event error:", error);
+      return res.status(500).json({
+        success: false,
+        msg: "Internal server error",
+        error: error.message,
+      });
+    }
+  };
+
   return {
     getCalendarEventsByDate,
     getCalendarEventById,
     getCalendarEventsByRange,
     getCalendarItems,
     updateCalendarEvent,
+    getExternalEvents,
+    createExternalEvent,
   };
 };
 

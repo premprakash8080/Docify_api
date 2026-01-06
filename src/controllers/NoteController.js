@@ -573,7 +573,7 @@ const refactorCreateNote = async (req, res) => {
   /**
    * @description Get a single note by ID
    * @param req.user - User from authentication middleware
-   * @param req.body.id - Note ID
+   * @param req.query.id - Note ID
    * @returns note details
    */
   const getNoteById = async (req, res) => {
@@ -586,7 +586,7 @@ const refactorCreateNote = async (req, res) => {
       }
 
       // Get ID from req.body (POST /notes/getNoteById)
-      const { id } = req.body;
+      const { id } = req.query;
 
       if (!id) {
         return res.status(400).json({
@@ -594,6 +594,7 @@ const refactorCreateNote = async (req, res) => {
           msg: "Note ID is required",
         });
       }
+      console.log("id", id);
 
       // Get note with relationships, tags, and aggregated counts
       const note = await Note.findOne({
@@ -1744,7 +1745,7 @@ const refactorCreateNote = async (req, res) => {
         });
       }
 
-      // Get ID from route params (GET /notes/:id/content)
+      // Get ID from route params (GET /notes/getNoteContent?id=2f9acc25-8ea0-402e-9e33-c4aedd4a451e)
       const { id } = req.query;
 
       if (!id) {
@@ -1824,7 +1825,7 @@ const refactorCreateNote = async (req, res) => {
       const noteObject = {
         id: noteData.id,
         title: noteData.title || "Untitled",
-        content: content?.content.content || "<p></p>",
+        content: content?.content || "<p></p>",
         notebook_id: noteData.notebook_id || null,
         stack_id: stackId,
         is_trashed: noteData.trashed || false,
