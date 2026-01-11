@@ -242,7 +242,7 @@ const TaskController = () => {
       // Find task first
       const task = await Task.findOne({
         where: { id },
-        attributes: ["id", "label", "description", "start_date", "start_time", "end_time", "reminder", "assigned_to", "priority", "flagged", "sort_order", "completed"],
+        attributes: ["id", "note_id", "label", "description", "start_date", "start_time", "end_time", "reminder", "assigned_to", "priority", "flagged", "sort_order", "completed"],
       });
 
       if (!task) {
