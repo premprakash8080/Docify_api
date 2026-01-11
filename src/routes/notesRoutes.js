@@ -49,7 +49,7 @@ router.get("/getAllNotes", getAllNotes); // notes?tag_id={tagId}&stack_id={stack
 router.get("/getNotesName", getNotesName); // Get notes with id and title only
 router.get("/getNoteById", getNoteById);
 router.put("/:id", updateNoteMeta);
-router.delete("/:id", deleteNote);
+router.delete("/deleteNote", deleteNote);
 
 // ==============================
 // Notebook ↔ Note
