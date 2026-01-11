@@ -36,6 +36,7 @@ const {
   getNoteWithStack,
   getNoteContent,
   getNotesName,
+  cloneNote,
 } = require("../controllers/NoteController");
 
 // Apply JWT middleware to all routes
@@ -68,6 +69,7 @@ router.put("/:id/unarchive", unarchiveNote);
 
 router.put("/:id/trash", trashNote);
 router.put("/:id/restore", restoreNote);
+router.post("/duplicateNote", cloneNote);
 
 // ==============================
 // Sync / Versioning

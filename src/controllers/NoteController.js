@@ -2353,6 +2353,155 @@ const refactorCreateNote = async (req, res) => {
     }
   };
 
+  /**
+   * @description Clone a note with content, tags, tasks, and files
+   * @param req.user - User from authentication middleware
+   * @param req.body.note_id - Note ID (required)
+   * @param req.body.notebook_id - Target notebook ID (optional, defaults to original notebook)
+   * @param req.body.title - New title (optional, defaults to "Copy of [original title]")
+   * @returns cloned note with all relationships
+   */
+  const cloneNote = async (req, res) => {
+    try {
+      const { note_id, notebook_id, title } = req.body;
+      const userId = req.user.id;
+
+      if (!note_id) {
+        return res.status(400).json({
+          success: false,
+          msg: "Note ID is required",
+        });
+      }
+
+      // Find the original note with its tags
+      const originalNote = await Note.findOne({
+        where: {
+          id: note_id,
+          user_id: userId,
+        },
+        include: [
+          {
+            model: Tag,
+            as: "tags",
+            through: { attributes: [] }, // Exclude join table attributes
+            attributes: ["id"],
+          },
+        ],
+      });
+
+      if (!originalNote) {
+        return res.status(404).json({
+          success: false,
+          msg: "Note not found",
+        });
+      }
+
+      // Determine target notebook
+      let targetNotebookId = notebook_id || originalNote.notebook_id;
+      
+      // Validate target notebook if provided
+      if (targetNotebookId) {
+        const targetNotebook = await Notebook.findOne({
+          where: {
+            id: targetNotebookId,
+            user_id: userId,
+          },
+        });
+
+        if (!targetNotebook) {
+          return res.status(404).json({
+            success: false,
+            msg: "Target notebook not found",
+          });
+        }
+      } else {
+        // Use resolveNotebookId to get or create a default notebook
+        targetNotebookId = await resolveNotebookId(userId, null);
+      }
+
+      // Generate new IDs
+      const newNoteId = uuidv4();
+      const newFirebaseDocId = uuidv4();
+
+      // Get original note content from Firebase
+      const originalContent = await getFirebaseNoteContent(originalNote.firebase_document_id);
+
+      // Initialize new note content in Firebase
+      await initializeNoteContent(newFirebaseDocId, {
+        title: title || `Copy of ${originalNote.title}`,
+        content: originalContent?.content || "",
+        user_id: userId,
+        notebook_id: targetNotebookId,
+        is_trashed: false,
+      });
+
+      // Create new note in database
+      const clonedNote = await Note.create({
+        id: newNoteId,
+        user_id: userId,
+        notebook_id: targetNotebookId,
+        firebase_document_id: newFirebaseDocId,
+        title: title || `Copy of ${originalNote.title}`,
+        pinned: false, // Cloned notes are not pinned by default
+        archived: false, // Cloned notes are not archived
+        trashed: false, // Cloned notes are not trashed
+        version: 1,
+        synced: false,
+      });
+
+      // Clone tags
+      const originalTags = originalNote.tags || [];
+      if (originalTags.length > 0) {
+        const tagIds = originalTags.map(tag => tag.id);
+        await clonedNote.setTags(tagIds);
+      }
+
+      // Clone tasks (if any)
+      const originalTasks = await Task.findAll({
+        where: {
+          note_id: note_id,
+        },
+      });
+
+      if (originalTasks.length > 0) {
+        const clonedTasks = originalTasks.map(task => ({
+          note_id: newNoteId,
+          label: task.label,
+          description: task.description,
+          start_date: task.start_date,
+          start_time: task.start_time,
+          end_time: task.end_time,
+          reminder: task.reminder,
+          assigned_to: task.assigned_to,
+          priority: task.priority,
+          flagged: false, // Cloned tasks are not flagged by default
+          completed: false, // Cloned tasks are not completed
+          sort_order: task.sort_order,
+        }));
+
+        await Task.bulkCreate(clonedTasks);
+      }
+
+      // Get formatted response with all relationships
+      const formattedNote = await getFormattedNoteResponse(clonedNote.id, userId);
+
+      return res.status(200).json({
+        success: true,
+        msg: "Note cloned successfully",
+        data: {
+          note: formattedNote,
+        },
+      });
+    } catch (error) {
+      console.error("Clone note error:", error);
+      return res.status(500).json({
+        success: false,
+        msg: "Internal server error",
+        error: error.message,
+      });
+    }
+  };
+
   return {
     createNote,
     getAllNotes,
@@ -2379,6 +2528,7 @@ const refactorCreateNote = async (req, res) => {
     getNoteWithStack,
     getCalendarNoteDetails,
     getNotesName,
+    cloneNote,
   };
 };
 
