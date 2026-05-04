@@ -77,10 +77,41 @@ const Note = database.define(
       type: Sequelize.DATE,
       allowNull: true,
     },
+    // Web Clipper provenance — populated only by the Docify Web Clipper
+    // extension. Notes typed inside the app leave these null, so a future
+    // "My Web Clips" filter can simply match on `clipped_at IS NOT NULL`.
+    source_url: {
+      type: Sequelize.TEXT,
+      allowNull: true,
+    },
+    clip_type: {
+      // Stored as STRING (not ENUM) so a new clip mode (e.g. screenshot)
+      // can be added later without a schema migration; controller validates.
+      type: Sequelize.STRING(32),
+      allowNull: true,
+    },
+    og_image_url: {
+      type: Sequelize.TEXT,
+      allowNull: true,
+    },
+    clipped_at: {
+      type: Sequelize.DATE,
+      allowNull: true,
+    },
   },
   {
     tableName: TABLE_NAME_NOTES,
     underscored: true,
+    indexes: [
+      { fields: ["user_id"] },
+      { fields: ["notebook_id"] },
+      // Composite covers the common "list user's notes (filtered out trash)
+      // sorted by recency" pattern that powers the sidebar.
+      { fields: ["user_id", "trashed", "updated_at"] },
+      // Powers a future "Web Clips" sidebar item — only rows where
+      // clipped_at is non-null, sorted newest first.
+      { fields: ["user_id", "clipped_at"] },
+    ],
   }
 );
 

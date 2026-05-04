@@ -565,6 +565,97 @@ const UserController = () => {
   };
 
   /**
+   * @description Change the authenticated user's email address.
+   * Requires the current password (for email/password accounts) and a new
+   * email that is not already in use. Google-auth users can update the
+   * stored email only if Firebase still considers it editable.
+   */
+  const changeEmail = async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          msg: "User not authenticated",
+        });
+      }
+
+      const { newEmail, password } = req.body;
+      if (!newEmail || typeof newEmail !== "string" || !newEmail.includes("@")) {
+        return res.status(400).json({
+          success: false,
+          msg: "A valid newEmail is required",
+        });
+      }
+
+      const normalized = newEmail.trim().toLowerCase();
+      const user = await User.findByPk(req.user.id);
+      if (!user) {
+        return res.status(404).json({ success: false, msg: "User not found" });
+      }
+
+      if ((user.email || "").toLowerCase() === normalized) {
+        return res.status(400).json({
+          success: false,
+          msg: "New email is the same as the current email",
+        });
+      }
+
+      // For email/password accounts, require password confirmation.
+      if (user.auth_provider === "email" && user.password_hash) {
+        if (!password) {
+          return res.status(400).json({
+            success: false,
+            msg: "Password confirmation is required",
+          });
+        }
+        const ok = await bcrypt.compare(password, user.password_hash);
+        if (!ok) {
+          return res
+            .status(401)
+            .json({ success: false, msg: "Password is incorrect" });
+        }
+      }
+
+      // Reject if another active user already has this email.
+      const conflict = await User.findOne({ where: { email: normalized } });
+      if (conflict && conflict.id !== user.id) {
+        return res
+          .status(409)
+          .json({ success: false, msg: "Email is already in use" });
+      }
+
+      // Mirror to Firebase for Google-auth users so identity stays in sync.
+      if (user.auth_provider === "google" && user.firebase_uid) {
+        try {
+          await admin.auth().updateUser(user.firebase_uid, { email: normalized });
+        } catch (firebaseError) {
+          console.error("Firebase email update error:", firebaseError);
+          return res.status(400).json({
+            success: false,
+            msg: "Failed to update email in Firebase",
+            error: firebaseError.message,
+          });
+        }
+      }
+
+      await user.update({ email: normalized });
+
+      return res.status(200).json({
+        success: true,
+        msg: "Email updated successfully",
+        data: { user: { id: user.id, email: normalized } },
+      });
+    } catch (error) {
+      console.error("Change email error:", error);
+      return res.status(500).json({
+        success: false,
+        msg: "Internal server error",
+        error: error.message,
+      });
+    }
+  };
+
+  /**
    * @description Get user settings
    * @param req.user - User from JWT/Firebase middleware
    * @returns user settings object
@@ -784,6 +875,7 @@ const UserController = () => {
     getProfile,
     updateProfile,
     changePassword,
+    changeEmail,
     getUserSettings,
     updateUserSettings,
     deleteAccount,

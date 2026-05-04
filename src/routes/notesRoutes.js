@@ -5,6 +5,7 @@ const {
   createNote,
   getAllNotes,
   getNoteById,
+  exportNote,
   updateNoteMeta,
   deleteNote,
   moveNoteToNotebook,
@@ -16,6 +17,7 @@ const {
   unarchiveNote,
   trashNote,
   restoreNote,
+  emptyTrash,
 
   // Sync
   markNoteSynced,
@@ -50,6 +52,11 @@ router.get("/getAllNotes", getAllNotes); // notes?tag_id={tagId}&stack_id={stack
 router.get("/getNotesName", getNotesName); // Get notes with id and title only
 router.get("/getNoteById", getNoteById);
 router.put("/:id", updateNoteMeta);
+
+// ==============================
+// Export (PDF via Puppeteer / HTML)
+// ==============================
+router.post("/:id/export", exportNote);
 router.delete("/deleteNote", deleteNote);
 
 // ==============================
@@ -69,6 +76,7 @@ router.put("/:id/unarchive", unarchiveNote);
 
 router.put("/:id/trash", trashNote);
 router.put("/:id/restore", restoreNote);
+router.post("/emptyTrash", emptyTrash);
 router.post("/duplicateNote", cloneNote);
 
 // ==============================

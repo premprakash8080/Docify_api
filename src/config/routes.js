@@ -15,7 +15,14 @@ exports.set_routes = (app) => {
   const colors = require("../routes/colorsRoute");
   const scratchPad = require("../routes/scratchPadRoutes");
   const search = require("../routes/searchRoutes");
-  
+  const shares = require("../routes/sharesRoute");
+  const mindmaps = require("../routes/mindmapsRoute");
+  const studySessions = require("../routes/studySessionsRoute");
+  const ai = require("../routes/aiRoutes");
+  const notifications = require("../routes/notificationsRoute");
+  const noteComments = require("../routes/noteCommentsRoute");
+  const clipper = require("../routes/clipperRoutes");
+
   app.use("/api/users", users);
   app.use("/api/notes", notes);
   app.use("/api/notebooks", notebooks);
@@ -28,4 +35,11 @@ exports.set_routes = (app) => {
   app.use("/api/colors", colors);
   app.use("/api/scratch-pad", scratchPad);
   app.use("/api/search", search);
+  app.use("/api/shares", shares);
+  app.use("/api/mindmaps", mindmaps);
+  app.use("/api/study-sessions", studySessions);
+  app.use("/api/ai", ai);
+  app.use("/api/notifications", notifications);
+  app.use("/api/note-comments", noteComments);
+  app.use("/api/clipper", clipper);
 };

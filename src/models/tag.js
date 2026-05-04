@@ -47,6 +47,7 @@ const Tag = database.define(
   {
     tableName: TABLE_NAME_TAGS,
     underscored: true,
+    indexes: [{ fields: ["user_id"] }],
   }
 );
 

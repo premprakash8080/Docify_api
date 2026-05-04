@@ -39,6 +39,13 @@ const NoteTag = database.define(
   {
     tableName: TABLE_NAME_NOTE_TAGS,
     underscored: true,
+    indexes: [
+      // Tag→note lookups (the "notes with tag X" filter) and note→tag
+      // lookups (sidebar tag chips) are both hot paths.
+      { fields: ["note_id"] },
+      { fields: ["tag_id"] },
+      { unique: true, fields: ["note_id", "tag_id"] },
+    ],
   }
 );
 

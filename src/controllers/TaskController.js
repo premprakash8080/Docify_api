@@ -18,42 +18,20 @@ const TaskController = () => {
       return false; // No conflict if time information is incomplete
     }
 
-    // Get all user's notes
-    const userNotes = await Note.findAll({
-      where: {
-        user_id: userId,
-      },
-      attributes: ["id"],
-    });
-
-    const noteIds = userNotes.map(note => note.id);
-
-    // Build where clause to find tasks on the same date
-    // Tasks must belong to user's notes (we don't check standalone tasks with note_id=null for ownership)
-    const whereConditions = [];
-    
-    if (noteIds.length > 0) {
-      whereConditions.push({ note_id: { [Op.in]: noteIds } });
-    }
-
-    // If no notes, return false (no tasks to check)
-    if (whereConditions.length === 0) {
-      return false;
-    }
-
+    // Single query against tasks scoped by user_id (now indexed). The
+    // previous implementation hydrated every note id for the user just to
+    // build an IN(...) filter — O(notes_per_user) extra rows on every call.
     const whereClause = {
+      user_id: userId,
       start_date: startDate,
       start_time: { [Op.ne]: null },
       end_time: { [Op.ne]: null },
-      [Op.or]: whereConditions,
     };
 
-    // Exclude the current task if updating
     if (excludeTaskId) {
       whereClause.id = { [Op.ne]: excludeTaskId };
     }
 
-    // Get all tasks on the same date with time slots
     const existingTasks = await Task.findAll({
       where: whereClause,
       attributes: ["id", "start_time", "end_time"],
@@ -182,8 +160,10 @@ const TaskController = () => {
         finalSortOrder = maxTask ? maxTask.sort_order + 1 : 0;
       }
 
-      // Create task
+      // Create task — always tag with the current user so standalone tasks
+      // (without a note) still have ownership for calendar / list views.
       const task = await Task.create({
+        user_id: req.user.id,
         note_id: note_id || null,
         label: label.trim(),
         description: description ? description.trim() : null,
@@ -1006,9 +986,10 @@ const TaskController = () => {
         });
       }
 
-      // Find task first
+      // SECURITY: enforce ownership via task.user_id so standalone tasks
+      // (without a note_id) are still accessible to their owner.
       const task = await Task.findOne({
-        where: { id },
+        where: { id, user_id: req.user.id },
       });
 
       if (!task) {
@@ -1018,19 +999,18 @@ const TaskController = () => {
         });
       }
 
-      // Verify note belongs to user
-      const note = await Note.findOne({
-        where: {
-          id: task.note_id,
-          user_id: req.user.id,
-        },
-      });
-
-      if (!note) {
-        return res.status(403).json({
-          success: false,
-          msg: "Access denied: Task does not belong to user",
+      // If the task is linked to a note, verify the note still belongs to
+      // this user (and isn't trashed). Standalone tasks skip this check.
+      if (task.note_id) {
+        const note = await Note.findOne({
+          where: { id: task.note_id, user_id: req.user.id },
         });
+        if (!note) {
+          return res.status(403).json({
+            success: false,
+            msg: "Access denied: Task's note does not belong to user",
+          });
+        }
       }
 
       return res.status(200).json({

@@ -3,6 +3,7 @@ const database = require("../config/database");
 const {
   TABLE_NAME_EXTERNAL_EVENTS,
   TABLE_NAME_USERS,
+  TABLE_NAME_NOTES,
 } = require("../config/table_names");
 
 const ExternalEvent = database.define(
@@ -66,6 +67,16 @@ const ExternalEvent = database.define(
       type: Sequelize.BOOLEAN,
       allowNull: false,
       defaultValue: false,
+    },
+    // Optional default note to attach when this template is dragged into a task.
+    note_id: {
+      type: Sequelize.UUID,
+      allowNull: true,
+      comment: "Optional default note (FK to notes.id) carried over to tasks created by drag-drop",
+      references: {
+        model: TABLE_NAME_NOTES,
+        key: "id",
+      },
     },
     created_at: {
       type: Sequelize.DATE,

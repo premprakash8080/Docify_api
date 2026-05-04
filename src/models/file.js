@@ -63,6 +63,10 @@ const File = database.define(
   {
     tableName: TABLE_NAME_FILES,
     underscored: true,
+    indexes: [
+      { fields: ["user_id"] },
+      { fields: ["note_id"] },
+    ],
   }
 );
 

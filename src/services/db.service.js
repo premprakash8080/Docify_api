@@ -8,7 +8,6 @@ const { syncViews } = require("../config/db.views");
 
 const dbService = (environment, migrate) => {
   const authenticateDB = () => database.authenticate();
-  database.sync();
   const syncDB = () =>
     database.sync({
       force: true,

@@ -12,6 +12,7 @@ const {
   getProfile,
   updateProfile,
   changePassword,
+  changeEmail,
   getUserSettings,
   updateUserSettings,
   deleteAccount
@@ -41,6 +42,7 @@ router.put("/profile", jwtVerify, uploadImage.single("avatar"), updateProfile);
 // Security (Protected)
 // ==============================
 router.put("/change-password", jwtVerify, changePassword);
+router.put("/change-email", jwtVerify, changeEmail);
 
 // ==============================
 // User Settings (Protected)

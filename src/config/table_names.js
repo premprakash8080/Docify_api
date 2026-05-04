@@ -12,6 +12,12 @@ const tableNames = {
   TABLE_NAME_TEMPLATES: "templates",
   TABLE_NAME_SCRATCH_PAD: "scratch_pad",
   TABLE_NAME_EXTERNAL_EVENTS: "external_events",
+  TABLE_NAME_NOTE_SHARES: "note_shares",
+  TABLE_NAME_MINDMAPS: "mindmaps",
+  TABLE_NAME_STUDY_SESSIONS: "study_sessions",
+  TABLE_NAME_NOTIFICATIONS: "notifications",
+  TABLE_NAME_NOTE_COMMENTS: "note_comments",
+  TABLE_NAME_CLIPPER_OTPS: "clipper_otps",
 };
 
 module.exports = tableNames;

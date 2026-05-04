@@ -21,6 +21,7 @@
   },
   "homepage": "https://gitlab.com/foxy-home-staging/foxy_homes_api#readme",
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.92.0",
     "@aws-sdk/client-s3": "^3.374.0",
     "@aws-sdk/client-ses": "^3.624.0",
     "bcryptjs": "^2.4.3",
@@ -45,6 +46,7 @@
     "node-cron": "^3.0.3",
     "nodemailer": "^6.9.3",
     "npm": "^9.8.0",
+    "puppeteer": "^23.0.0",
     "sequelize": "^6.32.1",
     "ua-parser-js": "^2.0.3"
   },

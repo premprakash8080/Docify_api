@@ -9,6 +9,14 @@ const Task = require("../models/task");
 const UserSetting = require("../models/userSetting");
 const Color = require("../models/color");
 const Template = require("../models/template");
+const NoteShare = require("../models/noteShare");
+const ExternalEvent = require("../models/externalEvent");
+const MindMap = require("../models/mindmap");
+const ScratchPad = require("../models/scratchPad");
+const NoteComment = require("../models/noteComment");
+const Notification = require("../models/notification");
+const ClipperOtp = require("../models/clipperOtp");
+const StudySession = require("../models/studySession");
 const preData = require("../config/preData.json");
 
 // Minimal helper to bulk insert while ignoring duplicates
@@ -28,9 +36,32 @@ const initiatePreData = async () => {
     await Note.sync();
     await NoteTag.sync();
     await File.sync();
-    await Task.sync();
+    // Task gets alter:true once so the new tasks.user_id column gets added
+    // to existing databases without dropping data, then back-fill from the
+    // related note's user_id below.
+    await Task.sync({ alter: true });
+    try {
+      await Task.sequelize.query(
+        "UPDATE tasks t LEFT JOIN notes n ON n.id = t.note_id SET t.user_id = n.user_id WHERE t.user_id IS NULL AND t.note_id IS NOT NULL"
+      );
+    } catch (err) {
+      console.error("tasks.user_id backfill skipped:", err.message || err);
+    }
     await UserSetting.sync();
     await Template.sync();
+    await NoteShare.sync();
+    // alter:true once so the new external_events.note_id column is added to
+    // existing databases without dropping data.
+    await ExternalEvent.sync({ alter: true });
+    // alter:true once so the new mindmaps.layout_type column is added to
+    // existing databases without dropping data.
+    await MindMap.sync({ alter: true });
+    await ScratchPad.sync();
+    await NoteComment.sync();
+    await Notification.sync();
+    await ClipperOtp.sync();
+    // StudySession depends on MindMap, so sync after MindMap above.
+    await StudySession.sync();
     //Checking existing Event Types table data
 
     //Checking existing Colors table data

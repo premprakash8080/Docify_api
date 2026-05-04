@@ -12,6 +12,7 @@ const User = require("../models/user");
 const { resolveNotebookId, getFirebaseDocId, getFormattedNoteResponse } = require("../utils/noteHelpers");
 const { getNoteContent: getFirebaseNoteContent, saveNoteContent: saveFirebaseNoteContent, initializeNoteContent } = require("../utils/noteFirestoreHelper");
 const cloudinary = require("cloudinary").v2;
+const NoteShare = require("../models/noteShare");
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -26,12 +27,46 @@ const NoteController = () => {
    * @param req.body.title - Note title
    * @param req.body.notebook_id - Notebook ID (optional)
    * @param req.body.firebase_document_id - Firebase document ID (optional, auto-generated if not provided)
+   * @param req.body.source_url - Web Clipper: URL the clip came from (optional)
+   * @param req.body.clip_type - Web Clipper: 'selection'|'article'|'full'|'bookmark'|'screenshot' (optional)
+   * @param req.body.og_image_url - Web Clipper: bookmark thumbnail (optional)
+   * @param req.body.clipped_at - Web Clipper: ISO timestamp; defaults to now when any clip_* field is set (optional)
+   * @param req.body.tags - Optional array of tag names; existing tags are reused, missing ones created (optional)
    * @returns created note
    */
   const createNote = async (req, res) => {
     try {
 
-      const { title, notebook_id, firebase_document_id } = req.body;
+      const {
+        title,
+        notebook_id,
+        firebase_document_id,
+        source_url,
+        clip_type,
+        og_image_url,
+        clipped_at,
+        tags,
+        // Forward-compat aliases the Web Clipper sends — extension keeps
+        // sourceUrl/clipType camelCase to match the rest of its payload.
+        sourceUrl,
+        clipType,
+      } = req.body;
+
+      // Normalise the Web Clipper fields to one shape so the rest of the
+      // function only deals with snake_case.
+      const VALID_CLIP_TYPES = new Set([
+        "selection", "article", "full", "bookmark", "screenshot",
+      ]);
+      const resolvedSourceUrl = source_url || sourceUrl || null;
+      const rawClipType = clip_type || clipType || null;
+      const resolvedClipType =
+        rawClipType && VALID_CLIP_TYPES.has(String(rawClipType).toLowerCase())
+          ? String(rawClipType).toLowerCase()
+          : null;
+      const resolvedOgImage = og_image_url || null;
+      const resolvedClippedAt = clipped_at
+        ? new Date(clipped_at)
+        : (resolvedSourceUrl || resolvedClipType ? new Date() : null);
 
       if (!title || title.trim() === "") {
         return res.status(400).json({
@@ -100,7 +135,9 @@ const NoteController = () => {
         initialFirebaseDocId = String(initialFirebaseDocId);
       }
 
-      // Create note - always include notebook_id (ensured above)
+      // Create note - always include notebook_id (ensured above). Web
+      // Clipper provenance fields are persisted when present so the note
+      // can later be filtered as a "Web Clip" and surface its source URL.
       const note = await Note.create({
         user_id: req.user.id,
         notebook_id: validatedNotebookId, // Always assigned to a notebook
@@ -111,7 +148,62 @@ const NoteController = () => {
         trashed: false,
         version: 1,
         synced: false,
+        source_url: resolvedSourceUrl,
+        clip_type: resolvedClipType,
+        og_image_url: resolvedOgImage,
+        clipped_at: resolvedClippedAt,
       });
+
+      // Optional bulk tag attach: extension passes `tags: ["foo", "bar"]`.
+      // Resolve each name (reuse existing case-insensitively, create the
+      // rest), then upsert NoteTag rows. Failures are non-fatal — the note
+      // is already saved and we'd rather succeed without tags than 500.
+      if (Array.isArray(tags) && tags.length > 0) {
+        try {
+          const cleanedNames = Array.from(
+            new Set(
+              tags
+                .map((t) => String(t || "").trim())
+                .filter((t) => t.length > 0 && t.length <= 50)
+            )
+          );
+          if (cleanedNames.length > 0) {
+            const lower = cleanedNames.map((n) => n.toLowerCase());
+            const existing = await Tag.findAll({
+              where: { user_id: req.user.id },
+            });
+            const byLower = new Map(
+              existing.map((t) => [String(t.name || "").toLowerCase(), t])
+            );
+            const toCreate = cleanedNames.filter(
+              (n) => !byLower.has(n.toLowerCase())
+            );
+            if (toCreate.length > 0) {
+              const created = await Tag.bulkCreate(
+                toCreate.map((name) => ({ user_id: req.user.id, name })),
+                { ignoreDuplicates: true }
+              );
+              for (const t of created) {
+                byLower.set(String(t.name || "").toLowerCase(), t);
+              }
+            }
+            const tagIds = lower
+              .map((l) => byLower.get(l)?.id)
+              .filter((id) => !!id);
+            if (tagIds.length > 0) {
+              await NoteTag.bulkCreate(
+                tagIds.map((tag_id) => ({ note_id: note.id, tag_id })),
+                { ignoreDuplicates: true }
+              );
+            }
+          }
+        } catch (tagErr) {
+          console.warn(
+            "[createNote] tag attach failed (note saved without tags):",
+            tagErr?.message || tagErr
+          );
+        }
+      }
 
       // Reload note with relationships to format response properly
       const noteWithRelations = await Note.findOne({
@@ -208,6 +300,11 @@ const NoteController = () => {
         created_at: noteData.created_at,
         updated_at: noteData.updated_at,
         last_modified: noteData.last_modified,
+        // Web Clipper provenance
+        source_url: noteData.source_url || null,
+        clip_type: noteData.clip_type || null,
+        og_image_url: noteData.og_image_url || null,
+        clipped_at: noteData.clipped_at || null,
         // Notebook information
         notebook_name: noteData.notebook?.name || null,
         notebook_description: noteData.notebook?.description || null,
@@ -479,42 +576,73 @@ const refactorCreateNote = async (req, res) => {
         ],
       });
 
-      // Get aggregated counts for each note
-      const notesWithCounts = await Promise.all(
-        notes.map(async (note) => {
-          const noteData = note.toJSON();
+      // Aggregate tag/file/task counts in three grouped queries instead of
+      // 4×N round-trips. The previous Promise.all loop scaled linearly with
+      // notebook size; this stays at constant query count.
+      const noteIds = notes.map((n) => n.id);
 
-          // Get tag count
-          const tagCount = await NoteTag.count({
-            where: { note_id: note.id },
-          });
-
-          // Get file count
-          const fileCount = await File.count({
-            where: { note_id: note.id },
-          });
-
-          // Get task counts
-          const taskStats = await Task.findAll({
-            where: { note_id: note.id },
-            attributes: [
-              [Sequelize.fn("COUNT", Sequelize.col("id")), "task_count"],
-              [
-                Sequelize.fn(
-                  "SUM",
-                  Sequelize.literal("CASE WHEN completed = 1 THEN 1 ELSE 0 END")
-                ),
-                "completed_task_count",
+      const [tagRows, fileRows, taskRows] = noteIds.length
+        ? await Promise.all([
+            NoteTag.findAll({
+              where: { note_id: { [Sequelize.Op.in]: noteIds } },
+              attributes: [
+                "note_id",
+                [Sequelize.fn("COUNT", Sequelize.col("id")), "count"],
               ],
-            ],
-            raw: true,
-          });
+              group: ["note_id"],
+              raw: true,
+            }),
+            File.findAll({
+              where: { note_id: { [Sequelize.Op.in]: noteIds } },
+              attributes: [
+                "note_id",
+                [Sequelize.fn("COUNT", Sequelize.col("id")), "count"],
+              ],
+              group: ["note_id"],
+              raw: true,
+            }),
+            Task.findAll({
+              where: { note_id: { [Sequelize.Op.in]: noteIds } },
+              attributes: [
+                "note_id",
+                [Sequelize.fn("COUNT", Sequelize.col("id")), "task_count"],
+                [
+                  Sequelize.fn(
+                    "SUM",
+                    Sequelize.literal("CASE WHEN completed = 1 THEN 1 ELSE 0 END")
+                  ),
+                  "completed_task_count",
+                ],
+              ],
+              group: ["note_id"],
+              raw: true,
+            }),
+          ])
+        : [[], [], []];
 
-          const taskCount = taskStats[0]?.task_count || 0;
-          const completedTaskCount = taskStats[0]?.completed_task_count || 0;
+      const tagCountByNote = new Map(tagRows.map((r) => [r.note_id, parseInt(r.count) || 0]));
+      const fileCountByNote = new Map(fileRows.map((r) => [r.note_id, parseInt(r.count) || 0]));
+      const taskStatsByNote = new Map(
+        taskRows.map((r) => [
+          r.note_id,
+          {
+            task_count: parseInt(r.task_count) || 0,
+            completed_task_count: parseInt(r.completed_task_count) || 0,
+          },
+        ])
+      );
 
-          // Build response similar to note_list_view
-          return {
+      const notesWithCounts = notes.map((note) => {
+        const noteData = note.toJSON();
+        const taskStats = taskStatsByNote.get(note.id) || {
+          task_count: 0,
+          completed_task_count: 0,
+        };
+        const tagCount = tagCountByNote.get(note.id) || 0;
+        const fileCount = fileCountByNote.get(note.id) || 0;
+
+        // Build response similar to note_list_view
+        return {
             id: noteData.id,
             user_id: noteData.user_id,
             notebook_id: noteData.notebook_id,
@@ -547,11 +675,10 @@ const refactorCreateNote = async (req, res) => {
             // Aggregated counts
             tag_count: tagCount,
             file_count: fileCount,
-            task_count: parseInt(taskCount) || 0,
-            completed_task_count: parseInt(completedTaskCount) || 0,
+            task_count: taskStats.task_count,
+            completed_task_count: taskStats.completed_task_count,
           };
-        })
-      );
+        });
 
       return res.status(200).json({
         success: true,
@@ -596,58 +723,88 @@ const refactorCreateNote = async (req, res) => {
       }
       console.log("id", id);
 
-      // Get note with relationships, tags, and aggregated counts
-      const note = await Note.findOne({
-        where: {
-          id,
-          user_id: req.user.id,
-        },
-        include: [
-          {
-            model: Tag,
-            as: "tags",
-            required: false,
-            attributes: ["id", "name", "color_id"],
-            through: {
-              attributes: [],
+      // Build the include tree once and reuse for both owner + shared lookups
+      const noteIncludes = [
+        {
+          model: Tag,
+          as: "tags",
+          required: false,
+          attributes: ["id", "name", "color_id"],
+          include: [
+            {
+              model: Color,
+              as: "color",
+              attributes: ["id", "name", "hex_code"],
+              required: false,
             },
-          },
-          {
-            model: Notebook,
-            as: "notebook",
-            required: false,
-            include: [
-              {
-                model: Stack,
-                as: "stack",
-                required: false,
-                include: [
-                  {
-                    model: Color,
-                    as: "color",
-                    attributes: ["id", "name", "hex_code"],
-                    required: false,
-                  },
-                ],
-                attributes: ["id", "name", "description", "color_id"],
-              },
-              {
-                model: Color,
-                as: "color",
-                attributes: ["id", "name", "hex_code"],
-                required: false,
-              },
-            ],
-            attributes: ["id", "name", "description", "color_id", "stack_id"],
-          },
-          {
-            model: User,
-            as: "user",
-            attributes: ["id", "email", "display_name"],
-            required: false,
-          },
-        ],
+          ],
+          through: { attributes: [] },
+        },
+        {
+          model: Notebook,
+          as: "notebook",
+          required: false,
+          include: [
+            {
+              model: Stack,
+              as: "stack",
+              required: false,
+              include: [
+                {
+                  model: Color,
+                  as: "color",
+                  attributes: ["id", "name", "hex_code"],
+                  required: false,
+                },
+              ],
+              attributes: ["id", "name", "description", "color_id"],
+            },
+            {
+              model: Color,
+              as: "color",
+              attributes: ["id", "name", "hex_code"],
+              required: false,
+            },
+          ],
+          attributes: ["id", "name", "description", "color_id", "stack_id"],
+        },
+        {
+          model: User,
+          as: "user",
+          attributes: ["id", "email", "display_name"],
+          required: false,
+        },
+      ];
+
+      // First try as owner
+      let note = await Note.findOne({
+        where: { id, user_id: req.user.id },
+        include: noteIncludes,
       });
+
+      // If not the owner, check for an active share with this user
+      let sharePermission = null;
+      let sharedBy = null;
+      if (!note) {
+        const share = await NoteShare.findOne({
+          where: { note_id: id, shared_with_user_id: req.user.id },
+          include: [
+            {
+              model: User,
+              as: "owner",
+              attributes: ["id", "email", "display_name", "avatar_url"],
+            },
+          ],
+        });
+        if (share) {
+          sharePermission = share.permission;
+          sharedBy = share.owner ? share.owner.toJSON() : null;
+          note = await Note.findOne({
+            where: { id },
+            include: noteIncludes,
+          });
+        }
+      }
 
       if (!note) {
         return res.status(404).json({
@@ -689,8 +846,13 @@ const refactorCreateNote = async (req, res) => {
       const taskCount = taskStats[0]?.task_count || 0;
       const completedTaskCount = taskStats[0]?.completed_task_count || 0;
 
-      // Format tags as array of tag names (strings)
-      const tags = (noteData.tags || []).map((tag) => tag.name);
+      // Return tags as full objects so the client can render chips with color
+      const tags = (noteData.tags || []).map((tag) => ({
+        id: tag.id,
+        name: tag.name,
+        color_id: tag.color_id,
+        color: tag.color || null,
+      }));
 
       // Build response
       const responseData = {
@@ -730,6 +892,9 @@ const refactorCreateNote = async (req, res) => {
         file_count: fileCount,
         task_count: parseInt(taskCount) || 0,
         completed_task_count: parseInt(completedTaskCount) || 0,
+        // Sharing context — null when the current user owns the note.
+        share_permission: sharePermission,
+        shared_by: sharedBy,
       };
 
       return res.status(200).json({
@@ -750,6 +915,157 @@ const refactorCreateNote = async (req, res) => {
 
   /**
    * @description Update note metadata
+   * @description Export a note as PDF (via Puppeteer) or HTML.
+   * @param req.params.id - Note ID
+   * @param req.body.format - 'pdf' | 'html' (default: 'pdf')
+   * @returns binary file stream with appropriate Content-Type and Content-Disposition
+   */
+  const exportNote = async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ success: false, msg: "User not authenticated" });
+      }
+
+      const { id } = req.params;
+      const format = (req.body?.format || req.query?.format || "pdf").toLowerCase();
+      if (!id) {
+        return res.status(400).json({ success: false, msg: "Note ID is required" });
+      }
+      if (!["pdf", "html"].includes(format)) {
+        return res
+          .status(400)
+          .json({ success: false, msg: "Unsupported format. Use 'pdf' or 'html'." });
+      }
+
+      const note = await Note.findOne({
+        where: { id, user_id: req.user.id },
+        attributes: ["id", "title", "firebase_document_id"],
+      });
+      if (!note) {
+        return res.status(404).json({ success: false, msg: "Note not found" });
+      }
+
+      // Firestore doc shape is { title, content, user_id, ... }. Extract the
+      // actual HTML body and tolerate a few legacy shapes (raw string / nested).
+      const firestoreDoc = await getFirebaseNoteContent(note.firebase_document_id);
+      let bodyHtml = "";
+      if (firestoreDoc) {
+        if (typeof firestoreDoc === "string") {
+          bodyHtml = firestoreDoc;
+        } else if (typeof firestoreDoc === "object") {
+          if (typeof firestoreDoc.content === "string") {
+            bodyHtml = firestoreDoc.content;
+          } else if (
+            firestoreDoc.content &&
+            typeof firestoreDoc.content === "object" &&
+            typeof firestoreDoc.content.content === "string"
+          ) {
+            bodyHtml = firestoreDoc.content.content;
+          }
+        }
+      }
+      // Strip a leading editor-injected H1 title block so we don't render the
+      // title twice (the editor stores the title as the first H1.note-title-block).
+      bodyHtml = bodyHtml.replace(
+        /^\s*<h1[^>]*class="[^"]*note-title-block[^"]*"[^>]*>[\s\S]*?<\/h1>/i,
+        ""
+      );
+
+      const escapeHtml = (s) =>
+        String(s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      const titleText = note.title || "Untitled";
+      const safeTitle = titleText.replace(/[\\/:*?"<>|]/g, "_");
+      const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>${escapeHtml(titleText)}</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 760px; margin: 2rem auto; padding: 0 1rem; line-height: 1.6; color: #212529; }
+  h1 { border-bottom: 1px solid #dee2e6; padding-bottom: .5rem; margin-top: 0; }
+  img { max-width: 100%; height: auto; }
+  pre, code { background: #f8f9fa; padding: .25rem .5rem; border-radius: .25rem; }
+  table { border-collapse: collapse; }
+  table td, table th { border: 1px solid #dee2e6; padding: .25rem .5rem; }
+  blockquote { border-left: 3px solid #dee2e6; margin: 0; padding: .25rem 1rem; color: #6c757d; }
+</style>
+</head>
+<body>
+<h1>${escapeHtml(titleText)}</h1>
+${bodyHtml}
+</body>
+</html>`;
+
+      if (format === "html") {
+        res.setHeader("Content-Type", "text/html; charset=utf-8");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="${safeTitle}.html"`
+        );
+        return res.status(200).send(html);
+      }
+
+      // PDF via Puppeteer (lazy-required so the rest of the API works without it installed)
+      let puppeteer;
+      try {
+        puppeteer = require("puppeteer");
+      } catch (e) {
+        return res.status(501).json({
+          success: false,
+          msg:
+            "PDF export unavailable: puppeteer is not installed on the server. Run `npm i puppeteer` in Docify_api.",
+        });
+      }
+
+      let browser;
+      try {
+        browser = await puppeteer.launch({
+          headless: "new",
+          args: ["--no-sandbox", "--disable-setuid-sandbox"],
+        });
+        const page = await browser.newPage();
+        await page.setContent(html, { waitUntil: "networkidle0" });
+        const pdfRaw = await page.pdf({
+          format: "A4",
+          printBackground: true,
+          margin: { top: "20mm", right: "15mm", bottom: "20mm", left: "15mm" },
+        });
+        // Newer Puppeteer returns Uint8Array; Express serializes non-Buffer
+        // objects as JSON which corrupts the binary. Always wrap.
+        const pdfBuffer = Buffer.isBuffer(pdfRaw) ? pdfRaw : Buffer.from(pdfRaw);
+
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="${safeTitle}.pdf"`
+        );
+        res.setHeader("Content-Length", pdfBuffer.length);
+        res.status(200);
+        return res.end(pdfBuffer);
+      } finally {
+        if (browser) {
+          try {
+            await browser.close();
+          } catch (closeErr) {
+            console.error("Puppeteer close error:", closeErr);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Export note error:", error);
+      return res.status(500).json({
+        success: false,
+        msg: "Failed to export note",
+        error: error.message,
+      });
+    }
+  };
+
+  /**
    * @param req.user - User from authentication middleware
    * @param req.body.id - Note ID
    * @param req.body.title - New title (optional)
@@ -1350,6 +1666,57 @@ const refactorCreateNote = async (req, res) => {
   };
 
   /**
+   * @description Permanently delete every trashed note for the authenticated
+   * user. Cascades through tasks and tag relationships the same way the
+   * single-note hard-delete does, so the trash page can wipe everything in
+   * one call instead of N round-trips.
+   */
+  const emptyTrash = async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ success: false, msg: "User not authenticated" });
+      }
+
+      const trashed = await Note.findAll({
+        where: { user_id: req.user.id, trashed: true },
+        attributes: ["id"],
+      });
+
+      if (trashed.length === 0) {
+        return res.status(200).json({
+          success: true,
+          msg: "Trash is already empty",
+          data: { deleted_count: 0 },
+        });
+      }
+
+      const ids = trashed.map((n) => n.id);
+
+      // Mirror the single-note delete: clear linked tasks and note-tag
+      // pivots before destroying the notes themselves. Files are intentionally
+      // left alone (they may be referenced elsewhere).
+      await Task.destroy({ where: { note_id: { [Sequelize.Op.in]: ids } } });
+      await NoteTag.destroy({ where: { note_id: { [Sequelize.Op.in]: ids } } });
+      const deletedCount = await Note.destroy({
+        where: { id: { [Sequelize.Op.in]: ids }, user_id: req.user.id },
+      });
+
+      return res.status(200).json({
+        success: true,
+        msg: `Deleted ${deletedCount} note${deletedCount === 1 ? "" : "s"} from trash`,
+        data: { deleted_count: deletedCount },
+      });
+    } catch (error) {
+      console.error("Empty trash error:", error);
+      return res.status(500).json({
+        success: false,
+        msg: "Internal server error",
+        error: error.message,
+      });
+    }
+  };
+
+  /**
    * @description Mark note as synced
    * @param req.user - User from authentication middleware
    * @param req.body.id - Note ID
@@ -1885,19 +2252,31 @@ const refactorCreateNote = async (req, res) => {
         });
       }
 
-      // Verify note exists and belongs to user
-      const note = await Note.findOne({
-        where: {
-          id,
-          user_id: req.user.id,
-        },
+      // Verify note: allow owner OR a sharee with edit permission
+      let note = await Note.findOne({
+        where: { id, user_id: req.user.id },
         attributes: ["id", "firebase_document_id", "version"],
       });
+      if (!note) {
+        const editShare = await NoteShare.findOne({
+          where: {
+            note_id: id,
+            shared_with_user_id: req.user.id,
+            permission: "edit",
+          },
+        });
+        if (editShare) {
+          note = await Note.findOne({
+            where: { id },
+            attributes: ["id", "firebase_document_id", "version"],
+          });
+        }
+      }
 
       if (!note) {
         return res.status(404).json({
           success: false,
-          msg: "Note not found",
+          msg: "Note not found or you don't have permission to edit",
         });
       }
 
@@ -2506,6 +2885,7 @@ const refactorCreateNote = async (req, res) => {
     createNote,
     getAllNotes,
     getNoteById,
+    exportNote,
     updateNoteMeta,
     deleteNote,
     moveNoteToNotebook,
@@ -2515,6 +2895,7 @@ const refactorCreateNote = async (req, res) => {
     unarchiveNote,
     trashNote,
     restoreNote,
+    emptyTrash,
     markNoteSynced,
     addTagToNote,
     removeTagFromNote,

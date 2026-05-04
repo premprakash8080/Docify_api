@@ -65,6 +65,10 @@ const Notebook = database.define(
   {
     tableName: TABLE_NAME_NOTEBOOKS,
     underscored: true,
+    indexes: [
+      { fields: ["user_id"] },
+      { fields: ["stack_id"] },
+    ],
   }
 );
 

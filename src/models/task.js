@@ -3,6 +3,7 @@ const database = require("../config/database");
 const {
   TABLE_NAME_TASKS,
   TABLE_NAME_NOTES,
+  TABLE_NAME_USERS,
 } = require("../config/table_names");
 
 const Task = database.define(
@@ -13,6 +14,16 @@ const Task = database.define(
       primaryKey: true,
       autoIncrement: true,
       allowNull: false,
+    },
+    // Direct user ownership — lets standalone tasks (without a note) still be
+    // scoped to the creator and shown on their calendar.
+    user_id: {
+      type: Sequelize.INTEGER,
+      allowNull: true, // nullable for safe migration; backfilled in initiatePreData
+      references: {
+        model: TABLE_NAME_USERS,
+        key: "id",
+      },
     },
     note_id: {
       type: Sequelize.UUID,
@@ -82,6 +93,12 @@ const Task = database.define(
   {
     tableName: TABLE_NAME_TASKS,
     underscored: true,
+    indexes: [
+      { fields: ["user_id"] },
+      { fields: ["note_id"] },
+      // Time-slot conflict checks query by (user_id, start_date) constantly.
+      { fields: ["user_id", "start_date"] },
+    ],
   }
 );
 

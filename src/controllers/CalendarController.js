@@ -82,7 +82,6 @@ const calendarController = () => {
         priority: taskData.priority || null,
         flagged: taskData.flagged || false,
         reminder: taskData.reminder || null,
-        assigned_to: taskData.assigned_to || null,
         sort_order: taskData.sort_order || null,
         note_id: taskData.note_id || null,
       };
@@ -164,9 +163,13 @@ const calendarController = () => {
       const tasksArray = [];
       const notesArray = [];
 
-      // Fetch tasks with start_date in the date range
+      // Fetch tasks with start_date in the date range.
+      // SECURITY: filter directly by task.user_id so standalone tasks (with
+      // null note_id) still appear for the owner. The Note include is now
+      // optional (LEFT JOIN) so tasks without a note are not excluded.
       const tasks = await Task.findAll({
         where: {
+          user_id: req.user.id,
           start_date: {
             [Op.between]: [startDate.toISOString().split('T')[0], endDate.toISOString().split('T')[0]],
           },
@@ -175,10 +178,7 @@ const calendarController = () => {
           {
             model: Note,
             as: "note",
-            where: {
-              user_id: req.user.id,
-              trashed: false,
-            },
+            where: { trashed: false },
             required: false,
             attributes: ["id", "title"],
           },
@@ -195,7 +195,6 @@ const calendarController = () => {
           "priority",
           "flagged",
           "reminder",
-          "assigned_to",
           "sort_order",
         ],
         order: [["start_date", "ASC"]],
@@ -296,17 +295,15 @@ const calendarController = () => {
         });
       }
 
-      // Get task with note relationship
+      // SECURITY: filter directly by task.user_id so standalone tasks (no
+      // note) are reachable to their owner only. Note include is optional.
       const task = await Task.findOne({
-        where: { id },
+        where: { id, user_id: req.user.id },
         include: [
           {
             model: Note,
             as: "note",
-            where: {
-              user_id: req.user.id,
-              trashed: false,
-            },
+            where: { trashed: false },
             required: false,
             attributes: ["id", "title"],
           },
@@ -323,7 +320,6 @@ const calendarController = () => {
           "priority",
           "flagged",
           "reminder",
-          "assigned_to",
           "sort_order",
         ],
       });
@@ -634,43 +630,18 @@ const calendarController = () => {
         });
       }
 
-      // Build task query conditions
-      const taskWhere = { id: task_id };
-      
-      // If note_id is provided, verify it and add to task query
-      if (note_id) {
-        // Verify note belongs to user
-        const note = await Note.findOne({
-          where: {
-            id: note_id,
-            user_id: req.user.id,
-            trashed: false,
-          },
-          attributes: ["id", "title"],
-        });
+      // SECURITY: ownership is enforced directly via task.user_id so
+      // standalone tasks (without a note_id) can also be updated by their owner.
+      const taskWhere = { id: task_id, user_id: req.user.id };
+      if (note_id) taskWhere.note_id = note_id;
 
-        if (!note) {
-          return res.status(404).json({
-            success: false,
-            msg: "Note not found or access denied",
-          });
-        }
-
-        // Add note_id to task query to verify task belongs to note
-        taskWhere.note_id = note_id;
-      }
-
-      // Find task by task_id (and note_id if provided)
       const task = await Task.findOne({
         where: taskWhere,
         include: [
           {
             model: Note,
             as: "note",
-            where: note_id ? {
-              user_id: req.user.id,
-              trashed: false,
-            } : undefined,
+            where: { trashed: false },
             required: false,
             attributes: ["id", "title"],
           },
@@ -691,30 +662,8 @@ const calendarController = () => {
       if (!task) {
         return res.status(404).json({
           success: false,
-          msg: note_id 
-            ? "Task not found or does not belong to the specified note"
-            : "Task not found",
+          msg: "Task not found or you don't have permission to update it",
         });
-      }
-
-      // Verify task belongs to user (through note if note_id exists, or check task's note)
-      const taskJson = task.toJSON();
-      if (taskJson.note_id) {
-        // Task has a note, verify the note belongs to user
-        const taskNote = await Note.findOne({
-          where: {
-            id: taskJson.note_id,
-            user_id: req.user.id,
-            trashed: false,
-          },
-        });
-
-        if (!taskNote) {
-          return res.status(403).json({
-            success: false,
-            msg: "Access denied: task's note does not belong to user",
-          });
-        }
       }
 
       // Prepare update data
@@ -759,7 +708,6 @@ const calendarController = () => {
           "priority",
           "flagged",
           "reminder",
-          "assigned_to",
           "sort_order",
         ],
       });
@@ -812,8 +760,8 @@ const calendarController = () => {
           "start_time",
           "end_time",
           "reminder",
-          "assigned_to",
           "flagged",
+          "note_id",
         ],
       });
 
@@ -841,8 +789,8 @@ const calendarController = () => {
               ? eventData.reminder.substring(0, 5) // Extract HH:MM from TIME format
               : eventData.reminder.toString().substring(0, 5)
             : null,
-          assigned_to: eventData.assigned_to || null,
           flagged: eventData.flagged || false,
+          note_id: eventData.note_id || null,
         };
       });
 
@@ -894,8 +842,8 @@ const calendarController = () => {
         start_time,
         end_time,
         reminder,
-        assigned_to,
         flagged,
+        note_id,
       } = req.body;
 
       // Validate required fields
@@ -914,6 +862,21 @@ const calendarController = () => {
         });
       }
 
+      // If a default note is selected, validate it belongs to this user.
+      let resolvedNoteId = null;
+      if (note_id) {
+        const note = await Note.findOne({
+          where: { id: note_id, user_id: req.user.id, trashed: false },
+          attributes: ["id"],
+        });
+        if (!note) {
+          return res
+            .status(400)
+            .json({ success: false, msg: "Selected note not found" });
+        }
+        resolvedNoteId = note_id;
+      }
+
       // Create external event
       const externalEvent = await ExternalEvent.create({
         user_id: req.user.id,
@@ -924,8 +887,8 @@ const calendarController = () => {
         start_time: start_time || null,
         end_time: end_time || null,
         reminder: reminder || null,
-        assigned_to: assigned_to ? assigned_to.trim() : null,
         flagged: flagged === true || flagged === "true" || false,
+        note_id: resolvedNoteId,
       });
 
       // Format the response to match the expected format
@@ -951,8 +914,8 @@ const calendarController = () => {
             ? eventData.reminder.substring(0, 5) // Extract HH:MM from TIME format
             : eventData.reminder.toString().substring(0, 5)
           : null,
-        assigned_to: eventData.assigned_to || null,
         flagged: eventData.flagged || false,
+        note_id: eventData.note_id || null,
       };
 
       return res.status(201).json({
